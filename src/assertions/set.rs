@@ -40,7 +40,6 @@ mod tests {
     use std::iter::FromIterator;
 
     use crate::testing::*;
-    use crate::{assert_that, check_that, Fact};
 
     use super::*;
 

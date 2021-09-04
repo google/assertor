@@ -1,4 +1,5 @@
 pub use crate::assertions::testing::AssertionResultAssertion;
+pub use crate::{assert_that, check_that, Fact};
 use crate::{AssertionResult, ReturnStrategy};
 
 /// An assertion macro that returns [`Result<(), AssertionResult>`](`CheckThatResult`) as an

@@ -92,7 +92,7 @@ where
 mod tests {
     use std::fmt::Debug;
 
-    use crate::{assert_that, check_that, Fact};
+    use crate::testing::*;
 
     use super::*;
 

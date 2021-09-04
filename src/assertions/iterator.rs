@@ -215,6 +215,7 @@ pub(crate) enum ContainsAtLeastResult<T> {
     Yes { is_in_order: bool },
     No { missing: Vec<T> },
 }
+
 pub(crate) fn check_contains_at_least<IA, IE, T>(
     mut actual_iter: IA,
     mut expected_iter: IE,
@@ -375,7 +376,6 @@ where
 #[cfg(test)]
 mod tests {
     use crate::testing::*;
-    use crate::{assert_that, check_that, Fact};
 
     use super::*;
 
