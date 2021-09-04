@@ -1,6 +1,7 @@
 pub mod basic;
 pub mod iterator;
 pub mod map;
+pub mod option;
 pub mod result;
 pub mod set;
 pub mod string;
