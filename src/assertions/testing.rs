@@ -130,8 +130,7 @@ mod tests {
         let failed: CheckThatResult = check_that!("actual").is_same_to("expected");
         assert_that!(check_that!(failed).facts_are(vec![])).facts_are(vec![
             Fact::new("value of", "failed.facts()"),
-            Fact::new("missing", "[]"),
-            Fact::new("unexpected", r#"[Value { value: "not same" }]"#),
+            Fact::new("unexpected (1)", r#"[Value { value: "not same" }]"#),
             Fact::new_splitter(),
             Fact::new("expected", "[]"),
             Fact::new("actual", r#"[Value { value: "not same" }]"#),

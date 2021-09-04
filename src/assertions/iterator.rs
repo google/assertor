@@ -100,7 +100,10 @@ where
             ContainsAtLeastResult::Yes { .. } => self.new_result().do_ok(),
             ContainsAtLeastResult::No { missing } => self
                 .new_result()
-                .add_fact("missing", format!("{:?}", missing))
+                .add_fact(
+                    format!("missing ({})", missing.len()),
+                    format!("{:?}", missing),
+                )
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
                 .add_splitter()
@@ -136,7 +139,10 @@ where
                 .do_fail(),
             ContainsAtLeastResult::No { missing } => self
                 .new_result()
-                .add_fact("missing", format!("{:?}", missing))
+                .add_fact(
+                    format!("missing ({})", missing.len()),
+                    format!("{:?}", missing),
+                )
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
                 .add_splitter()
@@ -312,16 +318,31 @@ pub(crate) fn feed_facts_about_item_diff<
     IA: Iterator<Item = A>,
     IE: Iterator<Item = E>,
 >(
-    assertion_result: AssertionResult,
+    mut result: AssertionResult,
     missing: Vec<T>,
     extra: Vec<T>,
     actual_iter: IA,
     expected_iter: IE,
 ) -> AssertionResult {
-    assertion_result
-        .add_fact("missing", format!("{:?}", missing))
-        .add_fact("unexpected", format!("{:?}", extra))
-        .add_splitter()
+    let mut splitter = false;
+    if !missing.is_empty() {
+        result = result.add_fact(
+            format!("missing ({})", missing.len()),
+            format!("{:?}", missing),
+        );
+        splitter = true;
+    }
+    if !extra.is_empty() {
+        result = result.add_fact(
+            format!("unexpected ({})", extra.len()),
+            format!("{:?}", extra),
+        );
+        splitter = true;
+    }
+    if splitter {
+        result = result.add_splitter();
+    }
+    result
         .add_fact(
             "expected",
             format!("{:?}", expected_iter.collect::<Vec<_>>()),
@@ -382,24 +403,22 @@ mod tests {
         // failures
         assert_that!(check_that!(vec![1, 2].iter()).contains_exactly_in_order(vec![1, 2, 3].iter()))
             .facts_are(vec![
-                Fact::new("missing", "[3]"),
-                Fact::new("unexpected", "[]"),
+                Fact::new("missing (1)", "[3]"),
                 Fact::new_splitter(),
                 Fact::new("expected", "[1, 2, 3]"),
                 Fact::new("actual", "[1, 2]"),
             ]);
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains_exactly_in_order(vec![1, 2].iter()))
             .facts_are(vec![
-                Fact::new("missing", "[]"),
-                Fact::new("unexpected", "[3]"),
+                Fact::new("unexpected (1)", "[3]"),
                 Fact::new_splitter(),
                 Fact::new("expected", "[1, 2]"),
                 Fact::new("actual", "[1, 2, 3]"),
             ]);
         assert_that!(check_that!(vec![1, 2].iter()).contains_exactly_in_order(vec![2, 3].iter()))
             .facts_are(vec![
-                Fact::new("missing", "[3]"),
-                Fact::new("unexpected", "[1]"),
+                Fact::new("missing (1)", "[3]"),
+                Fact::new("unexpected (1)", "[1]"),
                 Fact::new_splitter(),
                 Fact::new("expected", "[2, 3]"),
                 Fact::new("actual", "[1, 2]"),
@@ -423,7 +442,7 @@ mod tests {
         // Failures
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains_at_least(vec![3, 4].iter()))
             .facts_are(vec![
-                Fact::new("missing", "[4]"),
+                Fact::new("missing (1)", "[4]"),
                 Fact::new_splitter(),
                 Fact::new("expected to contain at least", "[3, 4]"),
                 Fact::new("but was", "[1, 2, 3]"),
@@ -442,7 +461,7 @@ mod tests {
             check_that!(vec![1, 2, 3].iter()).contains_at_least_in_order(vec![3, 4].iter())
         )
         .facts_are(vec![
-            Fact::new("missing", "[4]"),
+            Fact::new("missing (1)", "[4]"),
             Fact::new_splitter(),
             Fact::new("expected to contain at least", "[3, 4]"),
             Fact::new("but was", "[1, 2, 3]"),
