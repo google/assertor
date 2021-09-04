@@ -13,6 +13,8 @@ pub use assertions::iterator::IteratorAssertion;
 pub use assertions::map::MapAssertion;
 pub use assertions::result::ResultAssertion;
 pub use assertions::set::SetAssertion;
+pub use assertions::string::StringAssertion;
+pub use assertions::vec::VecAssertion;
 pub use base::{AssertionResult, Fact, Location, ReturnStrategy, Subject};
 
 mod assertions;
