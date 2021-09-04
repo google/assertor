@@ -322,8 +322,11 @@ pub(crate) fn feed_facts_about_item_diff<
         .add_fact("missing", format!("{:?}", missing))
         .add_fact("unexpected", format!("{:?}", extra))
         .add_splitter()
-        .add_fact("expected", format!("{:?}", actual_iter.collect::<Vec<_>>()))
-        .add_fact("actual", format!("{:?}", expected_iter.collect::<Vec<_>>()))
+        .add_fact(
+            "expected",
+            format!("{:?}", expected_iter.collect::<Vec<_>>()),
+        )
+        .add_fact("actual", format!("{:?}", actual_iter.collect::<Vec<_>>()))
 }
 
 pub(crate) fn check_has_length<I, T, R>(
@@ -376,6 +379,31 @@ mod tests {
     #[test]
     fn contains_exactly_in_order() {
         assert_that!(vec![1, 2, 3].iter()).contains_exactly_in_order(vec![1, 2, 3].iter());
+        // failures
+        assert_that!(check_that!(vec![1, 2].iter()).contains_exactly_in_order(vec![1, 2, 3].iter()))
+            .facts_are(vec![
+                Fact::new("missing", "[3]"),
+                Fact::new("unexpected", "[]"),
+                Fact::new_splitter(),
+                Fact::new("expected", "[1, 2, 3]"),
+                Fact::new("actual", "[1, 2]"),
+            ]);
+        assert_that!(check_that!(vec![1, 2, 3].iter()).contains_exactly_in_order(vec![1, 2].iter()))
+            .facts_are(vec![
+                Fact::new("missing", "[]"),
+                Fact::new("unexpected", "[3]"),
+                Fact::new_splitter(),
+                Fact::new("expected", "[1, 2]"),
+                Fact::new("actual", "[1, 2, 3]"),
+            ]);
+        assert_that!(check_that!(vec![1, 2].iter()).contains_exactly_in_order(vec![2, 3].iter()))
+            .facts_are(vec![
+                Fact::new("missing", "[3]"),
+                Fact::new("unexpected", "[1]"),
+                Fact::new_splitter(),
+                Fact::new("expected", "[2, 3]"),
+                Fact::new("actual", "[1, 2]"),
+            ]);
         assert_that!(
             check_that!(vec![2, 1, 3].iter()).contains_exactly_in_order(vec![1, 2, 3].iter())
         )

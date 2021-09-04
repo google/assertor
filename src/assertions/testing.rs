@@ -26,13 +26,13 @@ impl<'a, R> AssertionResultAssertion<'a, R> for Subject<'a, CheckThatResult, (),
 where
     AssertionResult: ReturnStrategy<R>,
 {
-    fn facts_are<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R {
+    fn facts_are<B: Borrow<Vec<Fact>>>(&self, expected: B) -> R {
         self.new_owned_subject(
             get_assertion_result(&self).facts().iter(),
             Some(format!("{}.facts()", self.description_or_expr())),
             (),
         )
-        .contains_exactly_in_order(facts.borrow().iter())
+        .contains_exactly_in_order(expected.borrow().iter())
     }
 
     fn facts_are_at_least<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R {
@@ -84,5 +84,57 @@ where
             Some(format!("{}.keys()", self.description_or_expr())),
             (),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fmt::Debug;
+
+    use crate::{assert_that, check_that, Fact};
+
+    use super::*;
+
+    trait TestAssertion<'a, S, R> {
+        fn is_same_to<B>(&self, expected: B) -> R
+        where
+            B: Borrow<S>,
+            S: PartialEq + Debug;
+    }
+
+    impl<'a, S, R> TestAssertion<'a, S, R> for Subject<'a, S, (), R>
+    where
+        AssertionResult: ReturnStrategy<R>,
+    {
+        fn is_same_to<B>(&self, expected: B) -> R
+        where
+            B: Borrow<S>,
+            S: PartialEq + Debug,
+        {
+            match expected.borrow().eq(self.actual().borrow()) {
+                true => self.new_result().add_simple_fact("same").do_ok(),
+                false => self.new_result().add_simple_fact("not same").do_fail(),
+            }
+        }
+    }
+
+    #[test]
+    fn test_assertion() {
+        assert_that!("same").is_same_to("same");
+        assert_that!(check_that!("actual").is_same_to("expected"))
+            .facts_are(vec![Fact::new_simple_fact("not same")]);
+    }
+
+    #[test]
+    fn facts_are() {
+        let failed: CheckThatResult = check_that!("actual").is_same_to("expected");
+        assert_that!(check_that!(failed).facts_are(vec![])).facts_are(vec![
+            Fact::new("value of", "failed.facts()"),
+            Fact::new("missing", "[]"),
+            Fact::new("unexpected", r#"[Value { value: "not same" }]"#),
+            Fact::new_splitter(),
+            Fact::new("expected", "[]"),
+            Fact::new("actual", r#"[Value { value: "not same" }]"#),
+        ]);
     }
 }
