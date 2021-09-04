@@ -46,7 +46,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::testing::*;
-    use crate::*;
+    use crate::{assert_that, check_that, Fact};
 
     use super::*;
 

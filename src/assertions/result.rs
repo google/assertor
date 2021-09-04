@@ -50,8 +50,16 @@ where
     {
         match self.actual() {
             Ok(actual) if actual.eq(expected.borrow()) => self.new_result().do_ok(),
-            Ok(_) => self.new_result().do_fail(),
-            Err(_) => self.new_result().do_fail(),
+            Ok(actual) => self
+                .new_result()
+                .add_fact("expected", format!("Ok({:?})", expected.borrow()))
+                .add_fact("actual", format!("Ok({:?})", actual))
+                .do_fail(),
+            Err(actual) => self
+                .new_result()
+                .add_fact("expected", format!("Ok({:?})", expected.borrow()))
+                .add_fact("actual", format!("Err({:?})", actual))
+                .do_fail(),
         }
     }
 
@@ -61,8 +69,16 @@ where
     {
         match self.actual() {
             Err(actual) if actual.eq(expected.borrow()) => self.new_result().do_ok(),
-            Err(_) => self.new_result().do_fail(),
-            _ => self.new_result().do_fail(),
+            Err(actual) => self
+                .new_result()
+                .add_fact("expected", format!("Err({:?})", expected.borrow()))
+                .add_fact("actual", format!("Err({:?})", actual))
+                .do_fail(),
+            Ok(actual) => self
+                .new_result()
+                .add_fact("expected", format!("Err({:?})", expected.borrow()))
+                .add_fact("actual", format!("Ok({:?})", actual))
+                .do_fail(),
         }
     }
 }
@@ -70,7 +86,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::testing::*;
-    use crate::*;
+    use crate::{assert_that, check_that, Fact};
 
     use super::*;
 
@@ -95,14 +111,22 @@ mod tests {
         assert_that!(Result::<_, ()>::Ok(())).has_ok(());
 
         // Failures
-        assert!(check_that!(Result::<_, ()>::Ok(0)).has_ok(1).is_err());
-        assert!(check_that!(Result::<(), ()>::Err(())).has_ok(()).is_err());
-        assert!(check_that!(Result::<&str, &str>::Err(""))
-            .has_ok("")
-            .is_err());
-        assert!(check_that!(Result::<&str, &str>::Ok(""))
-            .has_ok("not same")
-            .is_err());
+        assert_that!(check_that!(Result::<_, ()>::Ok(0)).has_ok(1)).facts_are(vec![
+            Fact::new("expected", "Ok(1)"),
+            Fact::new("actual", "Ok(0)"),
+        ]);
+        assert_that!(check_that!(Result::<(), ()>::Err(())).has_ok(())).facts_are(vec![
+            Fact::new("expected", "Ok(())"),
+            Fact::new("actual", "Err(())"),
+        ]);
+        assert_that!(check_that!(Result::<&str, &str>::Err("")).has_ok("")).facts_are(vec![
+            Fact::new("expected", r#"Ok("")"#),
+            Fact::new("actual", r#"Err("")"#),
+        ]);
+        assert_that!(check_that!(Result::<&str, &str>::Ok("")).has_ok("expected")).facts_are(vec![
+            Fact::new("expected", r#"Ok("expected")"#),
+            Fact::new("actual", r#"Ok("")"#),
+        ]);
     }
 
     #[test]
@@ -112,13 +136,23 @@ mod tests {
         assert_that!(Result::<(), _>::Err(())).has_err(());
 
         // Failures
-        assert!(check_that!(Result::<(), _>::Err(0)).has_err(1).is_err());
-        assert!(check_that!(Result::<(), ()>::Ok(())).has_err(()).is_err());
-        assert!(check_that!(Result::<&str, &str>::Ok(""))
-            .has_err("")
-            .is_err());
-        assert!(check_that!(Result::<&str, &str>::Err(""))
-            .has_err("not same")
-            .is_err());
+        assert_that!(check_that!(Result::<(), _>::Err(0)).has_err(1)).facts_are(vec![
+            Fact::new("expected", "Err(1)"),
+            Fact::new("actual", "Err(0)"),
+        ]);
+        assert_that!(check_that!(Result::<(), ()>::Ok(())).has_err(())).facts_are(vec![
+            Fact::new("expected", "Err(())"),
+            Fact::new("actual", "Ok(())"),
+        ]);
+        assert_that!(check_that!(Result::<&str, &str>::Ok("")).has_err("")).facts_are(vec![
+            Fact::new("expected", r#"Err("")"#),
+            Fact::new("actual", r#"Ok("")"#),
+        ]);
+        assert_that!(check_that!(Result::<&str, &str>::Err("")).has_err("expected")).facts_are(
+            vec![
+                Fact::new("expected", r#"Err("expected")"#),
+                Fact::new("actual", r#"Err("")"#),
+            ],
+        );
     }
 }

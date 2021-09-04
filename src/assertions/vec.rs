@@ -68,7 +68,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::testing::*;
-    use crate::*;
+    use crate::{assert_that, check_that, Fact};
 
     use super::*;
 
@@ -116,6 +116,10 @@ mod tests {
         assert_that!(Vec::<usize>::new()).has_length(0);
 
         // Failures
-        assert_that!(check_that!(Vec::<usize>::new()).has_length(3)).is_err();
+        assert_that!(check_that!(Vec::<usize>::new()).has_length(3)).facts_are(vec![
+            Fact::new("value of", "Vec::<usize>::new().size()"),
+            Fact::new("expected", "3"),
+            Fact::new("actual", "0"),
+        ]);
     }
 }
