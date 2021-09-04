@@ -4,26 +4,99 @@ use std::fmt::Debug;
 use crate::assertions::iterator::{check_has_length, check_is_empty, IteratorAssertion};
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
+/// Trait for vector assertion.
+///
+/// Compared to [`crate::IteratorAssertion`], [`VecAssertion`] simplifies code because it is not
+/// needed to take reference of the expected value and to call `vec.iter()` in the actual value.
+///
+/// ```
+/// use assertor::*;
+/// assert_that!(vec![1,2,3].iter()).contains(&2);  // IteratorAssertion
+/// assert_that!(vec![1,2,3]).contains(2); // VecAssertion
+/// ```
+///
+/// # Example
+/// ```
+/// use assertor::*;
+/// use assertor::VecAssertion;
+///
+/// assert_that!(Vec::<usize>::new()).is_empty();
+/// assert_that!(vec![1,2,3]).has_length(3);
+/// assert_that!(vec![1,2,3]).contains(2);
+/// assert_that!(vec![1,2,3]).contains_exactly(vec![3,2,1]);
+/// assert_that!(vec![1,2,3]).contains_exactly_in_order(vec![1,2,3]);
+/// ```
 pub trait VecAssertion<'a, S, T, R>
 where
     AssertionResult: AssertionStrategy<R>,
     Self: Sized,
 {
+    /// Checks that the subject contains the element `expected`.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3]).contains(2);
+    /// ```
     fn contains<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
         T: PartialEq + Debug;
 
-    fn contains_exactly<B: Borrow<Vec<T>>>(self, expected_iter: B) -> R
+    /// Checks that the subject exactly contains elements of `expected_vec`.
+    ///
+    /// This method doesn't take care of the order. Use
+    /// [contains_exactly_in_order](`VecAssertion::contains_exactly_in_order`) to check
+    /// elements are in the same order.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3]).contains_exactly(vec![3, 2, 1]);
+    /// ```
+    /// ```should_panic
+    /// use assertor::*;
+    /// assert_that!(vec![1]).contains_exactly(vec![1,2]);
+    /// assert_that!(vec![1,2]).contains_exactly(vec![1]);
+    /// ```
+    fn contains_exactly<B: Borrow<Vec<T>>>(self, expected_vec: B) -> R
     where
         T: PartialEq + Debug;
 
-    fn contains_exactly_in_order<B: Borrow<Vec<T>>>(self, expected_iter: B) -> R
+    /// Checks that the subject exactly contains `expected_vec` in the same order.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3]).contains_exactly_in_order(vec![1, 2, 3]);
+    /// ```
+    /// ```should_panic
+    /// use assertor::*;
+    /// assert_that!(vec![1]).contains_exactly_in_order(vec![1,2]);
+    /// assert_that!(vec![1,2]).contains_exactly_in_order(vec![1]);
+    /// ```
+    fn contains_exactly_in_order<B: Borrow<Vec<T>>>(self, expected_vec: B) -> R
     where
         T: PartialEq + Debug;
 
-    fn is_empty(&self) -> R;
+    /// Checks that the subject is empty.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(Vec::<usize>::new()).is_empty();
+    /// ```
+    fn is_empty(&self) -> R
+    where
+        T: Debug;
 
+    /// Checks that the subject is the given length.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3]).has_length(3);
+    /// ```
     fn has_length(&self, length: usize) -> R;
 }
 
@@ -56,7 +129,10 @@ where
             .contains_exactly_in_order(expected_iter.borrow().iter())
     }
 
-    fn is_empty(&self) -> R {
+    fn is_empty(&self) -> R
+    where
+        T: Debug,
+    {
         check_is_empty(self.new_result(), self.actual().iter())
     }
 
@@ -95,6 +171,8 @@ mod tests {
         assert_that!(check_that!(vec![2, 1, 3]).contains_exactly_in_order(vec![1, 2, 3])).facts_are(
             vec![
                 Fact::new_simple_fact("contents match, but order was wrong"),
+                Fact::new_splitter(),
+                Fact::new("expected", "[1, 2, 3]"),
                 Fact::new("actual", "[2, 1, 3]"),
             ],
         )
@@ -105,8 +183,11 @@ mod tests {
         assert_that!(Vec::<usize>::new()).is_empty();
 
         // Failures
-        assert_that!(check_that!(vec![1]).is_empty())
-            .facts_are(vec![Fact::new_simple_fact("expected to be empty")])
+        assert_that!(check_that!(vec![1]).is_empty()).facts_are(vec![
+            Fact::new_simple_fact("expected to be empty"),
+            Fact::new_splitter(),
+            Fact::new("actual", "[1]"),
+        ])
     }
 
     #[test]

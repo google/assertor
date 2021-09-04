@@ -43,7 +43,7 @@ where
             Some(format!("{}.facts()", self.description_or_expr())),
             (),
         )
-        .contains_at_least_in_order(facts.borrow().iter())
+        .contains_all_of_in_order(facts.borrow().iter())
     }
 
     fn fact_value_for_key<I: Into<String>>(&self, key: I) -> Subject<String, (), R> {

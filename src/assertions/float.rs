@@ -5,11 +5,32 @@ use num_traits::{Float, Zero};
 
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
+/// Trait for float assertion.
+///
+/// # Example
+/// ```
+/// use assertor::*;
+/// assert_that!(0.1_f32).is_approx_equal_to(0.1);
+/// assert_that!(0.1_f32)
+///     .with_abs_tol(0.5)
+///     .is_approx_equal_to(0.5);
+/// assert_that!(0.1_f64)
+///     .with_rel_tol(0.2)
+///     .is_approx_equal_to(0.12); // 0.1 ± 0.12 * 0.2
+/// ```
 pub trait FloatAssertion<'a, S, R> {
+    /// Set the relative tolerance.
     fn with_rel_tol(self, rel_tol: S) -> Subject<'a, S, FloatTolerance<S>, R>;
+    /// Set the absolute tolerance.
     fn with_abs_tol(self, abs_tol: S) -> Subject<'a, S, FloatTolerance<S>, R>;
 
+    /// Checks the subject is equal to `expected` with tolerance.
+    ///
+    /// The equality with tolerance is defined as following:
+    /// ```math
     /// abs(actual - expected) <= (asb_tol + rel_tol * abs(expected))
+    /// ```
+    /// See also: [numpy.isclose](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
     fn is_approx_equal_to<B: Borrow<S>>(&self, expected: B) -> R
     where
         FloatTolerance<S>: Default;

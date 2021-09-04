@@ -3,12 +3,33 @@ use std::fmt::Debug;
 
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
+/// Trait for result assertion.
+///
+/// # Example
+/// ```
+/// use assertor::*;
+///
+/// let ok : Result<usize, usize>= Ok(0);
+/// let err : Result<usize, usize>= Err(1);
+///
+/// assert_that!(ok).is_ok();
+/// assert_that!(err).is_err();
+/// assert_that!(ok).has_ok(0);
+/// assert_that!(err).has_err(1);
+/// ```
 pub trait ResultAssertion<R, OK, ERR> {
+    /// Checks that the subject is [`Result::Ok(_)`](`std::result::Result::Ok`).
     fn is_ok(&self) -> R;
+
+    /// Checks that the subject is [`Result::Err(_)`](`std::result::Result::Err`).
     fn is_err(&self) -> R;
+
+    /// Checks that the subject is [`Result::Ok(expected)`](`std::result::Result::Err`).
     fn has_ok<B: Borrow<OK>>(&self, expected: B) -> R
     where
         OK: PartialEq;
+
+    /// Checks that the subject is [`Result::Err(expected)`](`std::result::Result::Err`).
     fn has_err<B: Borrow<ERR>>(&self, expected: B) -> R
     where
         ERR: PartialEq;

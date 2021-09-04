@@ -8,16 +8,59 @@ use crate::assertions::basic::EqualityAssertion;
 use crate::assertions::iterator::check_is_empty;
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
+/// Trait for map assertion.
+///
+/// # Example
+/// ```
+/// use std::collections::HashMap;
+/// use assertor::*;
+///
+/// let mut map = HashMap::new();
+/// assert_that!(map).is_empty();
+///
+/// map.insert("one", 1);
+/// map.insert("two", 2);
+/// map.insert("three", 3);
+///
+/// assert_that!(map).has_length(3);
+/// assert_that!(map).contains_key("one");
+/// assert_that!(map).key_set().contains_exactly(vec!["three","two","one"].iter());
+/// ```
 pub trait MapAssertion<'a, K, V, R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    /// Checks that the subject has the given length.
     fn has_length(&self, length: usize) -> R;
-    fn is_empty(&self) -> R;
+
+    /// Checks that the subject is empty.
+    fn is_empty(&self) -> R
+    where
+        K: Debug;
+
+    /// Checks that the subject has the given `key`.
     fn contains_key<BK>(&self, key: BK) -> R
     where
         BK: Borrow<K>,
         K: Eq + Hash + Debug;
+
+    /// Returns a new subject which is an key set of the subject and which implements
+    /// [`crate::IteratorAssertion`].
+    ///
+    /// # Example
+    /// ```
+    /// use std::collections::HashMap;
+    /// use assertor::*;
+    /// use assertor::IteratorAssertion;
+    ///
+    /// let mut map = HashMap::new();
+    /// map.insert("one", 1);
+    /// map.insert("two", 2);
+    /// map.insert("three", 3);
+    ///
+    /// assert_that!(map).key_set().contains(&"one");
+    /// assert_that!(map).key_set().contains_exactly(vec!["three","two","one"].iter());
+    /// assert_that!(map).key_set().contains_all_of(vec!["one", "two"].iter());
     fn key_set(&self) -> Subject<Keys<K, V>, (), R>;
 }
 
@@ -34,7 +77,10 @@ where
         .is_equal_to(length)
     }
 
-    fn is_empty(&self) -> R {
+    fn is_empty(&self) -> R
+    where
+        K: Debug,
+    {
         check_is_empty(self.new_result(), self.actual().keys())
     }
 

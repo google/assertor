@@ -2,8 +2,18 @@ pub use crate::assertions::testing::CheckThatResultAssertion;
 pub use crate::{assert_that, check_that, Fact};
 use crate::{AssertionResult, AssertionStrategy};
 
-/// An assertion macro that returns [`CheckThatResult`] as assertion result. Expected to be used
-/// with [``]
+/// *Only for library developers.* An assertion macro for asserting assertion result.
+///
+/// # Example
+/// ```compile_fail // because of referring private module.
+/// use assertor::*;
+/// use assertor::testing::*;
+///
+/// assert_that!(check_that!("actual_string").is_same_string_to("expected_string")).facts_are(vec![
+///     Fact::new("expected", "expected_string"),
+///     Fact::new("actual", "actual_string"),
+/// ]);
+/// ```
 #[macro_export]
 macro_rules! check_that {
     ($actual:expr) => {

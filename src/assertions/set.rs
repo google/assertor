@@ -3,9 +3,48 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use crate::assertions::iterator::check_is_empty;
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
+use crate::EqualityAssertion;
 
+/// Trait for set assertion.
+///
+/// # Example
+/// ```
+/// use assertor::*;
+/// use std::collections::HashSet;
+///
+/// let mut set = HashSet::new();
+/// assert_that!(set).is_empty();
+///
+/// set.insert("a");
+/// set.insert("b");
+/// set.insert("c");
+///
+/// assert_that!(set).contains("a");
+/// assert_that!(set).has_length(3);
+/// ```
+/// ```should_panic
+/// use assertor::*;
+/// use std::collections::HashSet;
+///
+/// let mut set = HashSet::new();
+/// set.insert("a");
+/// assert_that!(set).contains("z");
+/// // expected to contain  : "z"
+/// // but did not
+/// // though it did contain: ["a"]
+/// ```
 pub trait SetAssertion<'a, S, T, R> {
+    /// Checks that the subject has the given length.
+    fn has_length(&self, length: usize) -> R;
+
+    /// Checks that the subject is empty.
+    fn is_empty(&self) -> R
+    where
+        T: Debug;
+
+    /// Checks that the subject has `expected`.
     fn contains<B: Borrow<T>>(&self, expected: B) -> R
     where
         T: PartialEq + Eq + Debug + Hash;
@@ -15,6 +54,22 @@ impl<'a, T, R> SetAssertion<'a, HashSet<T>, T, R> for Subject<'a, HashSet<T>, ()
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    fn has_length(&self, length: usize) -> R {
+        self.new_subject(
+            &self.actual().len(),
+            Some(format!("{}.len()", self.description_or_expr())),
+            (),
+        )
+        .is_equal_to(length)
+    }
+
+    fn is_empty(&self) -> R
+    where
+        T: Debug,
+    {
+        check_is_empty(self.new_result(), self.actual().iter())
+    }
+
     fn contains<B: Borrow<T>>(&self, expected: B) -> R
     where
         T: PartialEq + Eq + Debug + Hash,
@@ -42,6 +97,29 @@ mod tests {
     use crate::testing::*;
 
     use super::*;
+
+    #[test]
+    fn has_length() {
+        assert_that!(HashSet::from_iter(vec![1].iter())).has_length(1);
+        assert_that!(HashSet::from_iter(vec![1, 2, 3].iter())).has_length(3);
+        assert_that!(check_that!(HashSet::from_iter(vec![1].iter())).has_length(3)).facts_are(
+            vec![
+                Fact::new("value of", "HashSet::from_iter(vec![1].iter()).len()"),
+                Fact::new("expected", "3"),
+                Fact::new("actual", "1"),
+            ],
+        );
+    }
+
+    #[test]
+    fn is_empty() {
+        assert_that!(HashSet::<&usize>::from_iter(vec![].iter())).is_empty();
+        assert_that!(check_that!(HashSet::from_iter(vec![1].iter())).is_empty()).facts_are(vec![
+            Fact::new_simple_fact("expected to be empty"),
+            Fact::new_splitter(),
+            Fact::new("actual", "[1]"),
+        ]);
+    }
 
     #[test]
     fn contains() {

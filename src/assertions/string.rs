@@ -1,9 +1,29 @@
 use crate::assertions::basic::EqualityAssertion;
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
+/// Trait for string assertion.
+///
+/// # Example
+/// ```
+/// use assertor::*;
+///
+/// assert_that!("foobarbaz").is_same_string_to("foobarbaz");
+/// assert_that!("foobarbaz").contains("bar");
+/// assert_that!("foobarbaz").starts_with("foo");
+/// assert_that!("foobarbaz").ends_with("baz");
+/// ```
 pub trait StringAssertion<R> {
+    /// Checks that the subject is same string to `expected`.
     fn is_same_string_to<E: Into<String>>(&self, expected: E) -> R;
+
+    /// Checks that the subject contains `expected`.
     fn contains<E: Into<String>>(&self, expected: E) -> R;
+
+    /// Checks that the subject starts with `expected`.
+    fn starts_with<E: Into<String>>(&self, expected: E) -> R;
+
+    /// Checks that the subject ends with `expected`.
+    fn ends_with<E: Into<String>>(&self, expected: E) -> R;
 }
 
 impl<'s, R> StringAssertion<R> for Subject<'_, String, (), R>
@@ -26,6 +46,30 @@ where
                 .do_fail()
         }
     }
+
+    fn starts_with<E: Into<String>>(&self, expected: E) -> R {
+        let expected_str = expected.into();
+        if self.actual().starts_with(&expected_str) {
+            self.new_result().do_ok()
+        } else {
+            self.new_result()
+                .add_fact("expected a string that starts with", expected_str)
+                .add_fact("but was", self.actual())
+                .do_fail()
+        }
+    }
+
+    fn ends_with<E: Into<String>>(&self, expected: E) -> R {
+        let expected_str = expected.into();
+        if self.actual().ends_with(&expected_str) {
+            self.new_result().do_ok()
+        } else {
+            self.new_result()
+                .add_fact("expected a string that ends with", expected_str)
+                .add_fact("but was", self.actual())
+                .do_fail()
+        }
+    }
 }
 
 impl<'s, R> StringAssertion<R> for Subject<'_, &str, (), R>
@@ -40,6 +84,16 @@ where
     fn contains<E: Into<String>>(&self, expected: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())
             .contains(expected)
+    }
+
+    fn starts_with<E: Into<String>>(&self, expected: E) -> R {
+        self.new_owned_subject(self.actual().to_string(), None, ())
+            .starts_with(expected)
+    }
+
+    fn ends_with<E: Into<String>>(&self, expected: E) -> R {
+        self.new_owned_subject(self.actual().to_string(), None, ())
+            .ends_with(expected)
     }
 }
 
@@ -59,6 +113,24 @@ mod tests {
             Fact::new("expected", r#""bar""#),
             Fact::new("actual", r#""ninja""#),
         ]);
+    }
+
+    #[test]
+    fn starts_with() {
+        assert_that!("foobarbaz").starts_with("foo");
+        assert_that!(check_that!("foobarbaz").starts_with("baz")).facts_are(vec![
+            Fact::new("expected a string that starts with", "baz"),
+            Fact::new("but was", "foobarbaz"),
+        ])
+    }
+
+    #[test]
+    fn ends_with() {
+        assert_that!("foobarbaz").ends_with("baz");
+        assert_that!(check_that!("foobarbaz").ends_with("foo")).facts_are(vec![
+            Fact::new("expected a string that ends with", "foo"),
+            Fact::new("but was", "foobarbaz"),
+        ])
     }
 
     #[test]

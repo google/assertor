@@ -3,8 +3,18 @@ use std::fmt::Debug;
 
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
+/// Trait for equality assertion.
+/// # Example
+/// ```
+/// use assertor::*;
+/// assert_that!(1).is_equal_to(1);
+/// assert_that!(1).is_not_equal_to(2);
+/// ```
 pub trait EqualityAssertion<S, R> {
+    /// Checks if the subject is equal to `expected`.
     fn is_equal_to<B: Borrow<S>>(&self, expected: B) -> R;
+
+    /// Checks if the subject value is NOT equal to `expected`.
     fn is_not_equal_to<B: Borrow<S>>(&self, expected: B) -> R;
 }
 
@@ -31,6 +41,7 @@ where
     }
 }
 
+/// Trait for comparison assertions.
 pub trait ComparableAssertion<S, R> {
     /// Checks that the subject is greater than or equal to `expected`.
     fn is_at_least<B: Borrow<S>>(&self, expected: B) -> R;

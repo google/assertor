@@ -25,6 +25,7 @@ macro_rules! assert_that {
     };
 }
 
+/// Subject structure that contains actual value with auxiliary data (ex. line pos, description).
 pub struct Subject<'a, Sub, Opt, Ret> {
     actual: ActualValue<'a, Sub>,
 
@@ -52,6 +53,7 @@ pub struct Subject<'a, Sub, Opt, Ret> {
 
 impl<'a, Sub, Opt, Ret> Subject<'a, Sub, Opt, Ret> {
     #[allow(dead_code)] // Used by macros.
+    /// Creates a new subject with a referenced actual value.
     pub fn new(
         actual: &'a Sub,
         expr: String,
@@ -70,6 +72,7 @@ impl<'a, Sub, Opt, Ret> Subject<'a, Sub, Opt, Ret> {
         }
     }
 
+    /// Creates a new subject with an owned actual value.
     pub(super) fn new_from_owned_actual(
         actual: Sub,
         expr: String,
@@ -265,12 +268,15 @@ impl AssertionStrategy<()> for AssertionResult {
     fn do_ok(&self) {}
 }
 
+/// Contains assertion results which will be shown in the assertion messages.
+#[allow(missing_docs)]
 #[derive(Clone)]
 pub struct AssertionResult {
     location: Option<String>,
     facts: Vec<Fact>,
 }
 
+#[allow(missing_docs)]
 impl AssertionResult {
     pub(self) fn new(location: &Option<Location>) -> Self {
         AssertionResult {
@@ -297,6 +303,7 @@ impl AssertionResult {
         self
     }
 
+    /// Generates an assertion message from the assertion result.
     pub fn generate_message(&self) -> String {
         let mut messages = vec![];
 
@@ -346,6 +353,10 @@ impl std::fmt::Debug for AssertionResult {
     }
 }
 
+/// Code location.
+///
+/// # Related
+/// - [`core::panic::Location`]
 #[derive(Debug, Clone)]
 pub struct Location {
     file: String,
@@ -354,6 +365,7 @@ pub struct Location {
 }
 
 impl Location {
+    /// Creates a new location instance.
     #[allow(dead_code)] // Used by macros.
     pub fn new<I: Into<String>>(file: I, line: u32, column: u32) -> Self {
         Location {
@@ -370,13 +382,36 @@ impl fmt::Display for Location {
     }
 }
 
+/// A piece of assertion message.
+///
+/// # Design discussion
+/// - New entry for having elements?
+///     - `KeyValues {key: String, value: Vec<String>}`
+/// - New entry for comparing elements?
+///     - `Comparison {key: String, actual: Vec<String>, expected: Vec<String>}`
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Fact {
+    /// Keyed assertion message
+    ///
+    /// # Example
+    /// ```text
+    /// Fact {key: "expected", value: "foo"}
+    /// Fact {key: "actual", value: "var"}
+    /// ```
     KeyValue { key: String, value: String },
+    /// Single assertion message
+    ///
+    /// # Example
+    /// ```text
+    /// Fact {value: "expected that the vec is empty"}
+    /// ```
     Value { value: String },
+    /// Splitter
     Splitter,
 }
 
+#[allow(missing_docs)]
 impl Fact {
     pub fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Fact {
         Fact::KeyValue {
