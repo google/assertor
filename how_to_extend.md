@@ -119,7 +119,7 @@ assert_that!(hash_map).contains_key("bar");
 
 ### What is `derived subject`?
 
-The feature to create a new subject whose type is different from original subject type.
+A feature to create a new subject whose type is different from the original subject type.
 
 - `Subject.new_subject(..)`
 - `Subject.new_owned_subject(..)`
@@ -130,7 +130,7 @@ impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R
     where
         AssertionResult: ReturnStrategy<R>,
 {
-    fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
+    fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> { // <- Returns new subject whose type is Keys<> from HashMap<>
         self.new_owned_subject(
             self.actual().keys(),
             Some(format!("{}.keys()", self.description_or_expr())),
