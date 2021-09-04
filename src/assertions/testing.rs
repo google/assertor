@@ -19,7 +19,8 @@ fn get_assertion_result<'a, 'o, R>(
     subject
         .actual()
         .as_ref()
-        .expect_err("Because this is assertion for error message.")
+        // TODO: Improve error message; should have line-no.
+        .expect_err("Expected Err but got Ok because this is assertion for error message.")
 }
 
 impl<'a, R> AssertionResultAssertion<'a, R> for Subject<'a, CheckThatResult, (), R>
