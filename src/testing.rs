@@ -36,7 +36,6 @@ pub struct CheckThatResult(Result<(), AssertionResult>);
 
 impl AssertionStrategy<CheckThatResult> for AssertionResult {
     fn do_fail(self) -> CheckThatResult {
-        // XXX: Maybe removable clone. Think better way.
         CheckThatResult(Err(self))
     }
 
