@@ -3,6 +3,9 @@ How to extend
 
 ## 1. Write your own Assertion trait.
 - S: Subject type (e.g. HashSet<T>)
+- R: Return type of assertion
+  - For `assert_that!` macro, `R` is `()` (or panic when the assertion fails).
+  - For `check_that!` macro, `R` is `CheckThatResult`.
 
 ```rust
 trait SetAssertion<S, T, R> {
