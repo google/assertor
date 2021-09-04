@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
+/// An assertion macro that panics when the assertion fails.
 #[macro_export]
 macro_rules! assert_that {
     ($actual:expr) => {
@@ -23,26 +24,6 @@ macro_rules! assert_that {
         )
     };
 }
-
-#[macro_export]
-macro_rules! check_that {
-    ($actual:expr) => {
-        $crate::Subject::new(
-            &$actual,
-            stringify!($actual).to_string(),
-            /*description=*/ None,
-            /*option=*/ (),
-            Some($crate::Location::new(
-                file!().to_string(),
-                line!(),
-                column!(),
-            )),
-            std::marker::PhantomData::<$crate::CheckThatResult>,
-        )
-    };
-}
-
-pub type CheckThatResult = Result<(), AssertionResult>;
 
 pub struct Subject<'a, Sub, Opt, Ret> {
     actual: ActualValue<'a, Sub>,
@@ -275,18 +256,6 @@ impl ReturnStrategy<()> for AssertionResult {
 
     fn do_ok(&self) -> () {
         ()
-    }
-}
-
-impl ReturnStrategy<CheckThatResult> for AssertionResult {
-    fn do_fail(&self) -> CheckThatResult {
-        // XXX: Maybe removable clone. Think better way.
-        Err(self.clone())
-    }
-
-    fn do_ok(&self) -> CheckThatResult {
-        // XXX: Unnecessary AssertionResult instantiation for ok cases.
-        Ok(())
     }
 }
 

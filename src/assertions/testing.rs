@@ -2,7 +2,8 @@ use std::borrow::Borrow;
 use std::collections::HashSet;
 
 use crate::assertions::iterator::IteratorAssertion;
-use crate::base::{AssertionApi, AssertionResult, CheckThatResult, Fact, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, Fact, ReturnStrategy, Subject};
+use crate::testing::CheckThatResult;
 
 pub trait AssertionResultAssertion<'a, R> {
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R;
@@ -22,8 +23,8 @@ fn get_assertion_result<'a, 'o, R>(
 }
 
 impl<'a, R> AssertionResultAssertion<'a, R> for Subject<'a, CheckThatResult, (), R>
-where
-    AssertionResult: ReturnStrategy<R>,
+    where
+        AssertionResult: ReturnStrategy<R>,
 {
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R {
         self.new_owned_subject(
@@ -31,7 +32,7 @@ where
             Some(format!("{}.facts()", self.description_or_expr())),
             (),
         )
-        .contains_exactly_in_order(facts.borrow().iter())
+            .contains_exactly_in_order(facts.borrow().iter())
     }
 
     fn facts_are_at_least<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R {
@@ -40,7 +41,7 @@ where
             Some(format!("{}.facts()", self.description_or_expr())),
             (),
         )
-        .contains_at_least_in_order(facts.borrow().iter())
+            .contains_at_least_in_order(facts.borrow().iter())
     }
 
     fn fact_value_for_key<I: Into<String>>(&self, key: I) -> Subject<String, (), R> {
