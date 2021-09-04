@@ -2,7 +2,6 @@
 //!
 //! Assertor is heavy affected by [Java Truth](https://github.com/google/truth) in terms of API
 //! design and error messages.
-
 #![warn(missing_docs)]
 
 #[cfg(feature = "float")]

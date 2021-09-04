@@ -94,7 +94,7 @@ where
     fn with_rel_tol(self, rel_tol: S) -> Subject<'a, S, FloatTolerance<S>, R> {
         // XXX: consider to remove clone.
         self.new_owned_subject(
-            self.actual().clone(),
+            *self.actual(),
             self.description().clone(),
             FloatTolerance::zeros().with_rel_tol(rel_tol),
         )
@@ -103,7 +103,7 @@ where
     fn with_abs_tol(self, abs_tol: S) -> Subject<'a, S, FloatTolerance<S>, R> {
         // XXX: consider to remove clone.
         self.new_owned_subject(
-            self.actual().clone(),
+            *self.actual(),
             self.description().clone(),
             FloatTolerance::zeros().with_abs_tol(abs_tol),
         )
@@ -126,21 +126,21 @@ mod tests {
 
     #[test]
     fn is_approx_equal_to() {
-        assert_that!(0.1 as f32).is_approx_equal_to(0.1);
-        assert_that!(0.1 as f32).is_approx_equal_to(0.100000001);
-        assert_that!(0.1 as f32)
+        assert_that!(0.1_f32).is_approx_equal_to(0.1);
+        assert_that!(0.1_f32).is_approx_equal_to(0.1);
+        assert_that!(0.1_f32)
             .with_abs_tol(0.5)
             .is_approx_equal_to(0.5);
-        assert_that!(0.1 as f32)
+        assert_that!(0.1_f32)
             .with_rel_tol(0.2)
             .is_approx_equal_to(0.12); // 0.1 ± 0.12 * 0.2
 
-        assert_that!(0.1 as f64).is_approx_equal_to(0.1);
-        assert_that!(0.1 as f64).is_approx_equal_to(0.100000001);
-        assert_that!(0.1 as f64)
+        assert_that!(0.1_f64).is_approx_equal_to(0.1);
+        assert_that!(0.1_f64).is_approx_equal_to(0.100000001);
+        assert_that!(0.1_f64)
             .with_abs_tol(0.5)
             .is_approx_equal_to(0.5);
-        assert_that!(0.1 as f64)
+        assert_that!(0.1_f64)
             .with_rel_tol(0.2)
             .is_approx_equal_to(0.12); // 0.1 ± 0.12 * 0.2
 

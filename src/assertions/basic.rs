@@ -120,6 +120,6 @@ mod tests {
     fn is_at_least() {
         assert_that!(2).is_at_least(1);
         assert_that!(2).is_at_least(2);
-        assert_that!(2. as f32).is_at_least(1.);
+        assert_that!(2_f32).is_at_least(1.);
     }
 }

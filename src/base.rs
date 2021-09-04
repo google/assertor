@@ -224,7 +224,7 @@ impl<'a, Sub, Opt, Ret> AssertionApi<'a, Sub, Opt, Ret> for Subject<'a, Sub, Opt
             new_description,
             new_option,
             self.location.clone(),
-            self.return_type.clone(),
+            self.return_type,
         )
     }
     fn new_owned_subject<'b, NewSub, NewOpt>(
@@ -239,7 +239,7 @@ impl<'a, Sub, Opt, Ret> AssertionApi<'a, Sub, Opt, Ret> for Subject<'a, Sub, Opt
             new_description,
             new_option,
             self.location.clone(),
-            self.return_type.clone(),
+            self.return_type,
         )
     }
 }
@@ -258,13 +258,11 @@ pub trait AssertionStrategy<R> {
 }
 
 impl AssertionStrategy<()> for AssertionResult {
-    fn do_fail(&self) -> () {
+    fn do_fail(&self) {
         std::panic::panic_any(self.generate_message());
     }
 
-    fn do_ok(&self) -> () {
-        ()
-    }
+    fn do_ok(&self) {}
 }
 
 #[derive(Clone)]
@@ -330,7 +328,7 @@ impl AssertionResult {
                     value = value,
                     width = longest_key_length
                 )),
-                Fact::Value { value } => messages.push(format!("{}", value)),
+                Fact::Value { value } => messages.push(value.to_string()),
                 Fact::Splitter => messages.push(String::from("---")),
             }
         }

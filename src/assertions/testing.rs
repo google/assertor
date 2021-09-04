@@ -30,7 +30,7 @@ where
 {
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, expected: B) -> R {
         self.new_owned_subject(
-            get_assertion_result(&self).facts().iter(),
+            get_assertion_result(self).facts().iter(),
             Some(format!("{}.facts()", self.description_or_expr())),
             (),
         )
@@ -39,7 +39,7 @@ where
 
     fn facts_are_at_least<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R {
         self.new_owned_subject(
-            get_assertion_result(&self).facts().iter(),
+            get_assertion_result(self).facts().iter(),
             Some(format!("{}.facts()", self.description_or_expr())),
             (),
         )
@@ -48,7 +48,7 @@ where
 
     fn fact_value_for_key<I: Into<String>>(&self, key: I) -> Subject<String, (), R> {
         let key_str = key.into();
-        let assertion_result = get_assertion_result(&self);
+        let assertion_result = get_assertion_result(self);
         let value = assertion_result
             .facts()
             .iter()
@@ -57,11 +57,13 @@ where
                 _ => None,
             })
             .next()
-            .expect(&format!(
-                "key `{}` not found in assertion result.\n{:?}",
-                key_str,
-                assertion_result.generate_message()
-            ))
+            .unwrap_or_else(|| {
+                panic!(
+                    "key `{}` not found in assertion result.\n{:?}",
+                    key_str,
+                    assertion_result.generate_message()
+                )
+            })
             .clone();
         self.new_owned_subject(
             value,

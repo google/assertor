@@ -57,7 +57,7 @@ where
                 missing,
                 extra,
                 self.actual().clone(),
-                expected_iter.clone(),
+                expected_iter,
             )
             .do_fail(),
         }
@@ -86,7 +86,7 @@ where
                 missing,
                 extra,
                 self.actual().clone(),
-                expected_iter.clone(),
+                expected_iter,
             )
             .do_fail(),
         }
@@ -109,7 +109,7 @@ where
                 .add_splitter()
                 .add_fact(
                     "expected to contain at least",
-                    format!("{:?}", expected_iter.clone().collect::<Vec<_>>()),
+                    format!("{:?}", expected_iter.collect::<Vec<_>>()),
                 )
                 .add_fact(
                     "but was",
@@ -130,7 +130,7 @@ where
                 .add_simple_fact("required elements were all found, but order was wrong")
                 .add_fact(
                     "expected order for required elements",
-                    format!("{:?}", expected_iter.clone().collect::<Vec<_>>()),
+                    format!("{:?}", expected_iter.collect::<Vec<_>>()),
                 )
                 .add_fact(
                     "but was",
@@ -148,7 +148,7 @@ where
                 .add_splitter()
                 .add_fact(
                     "expected to contain at least",
-                    format!("{:?}", expected_iter.clone().collect::<Vec<_>>()),
+                    format!("{:?}", expected_iter.collect::<Vec<_>>()),
                 )
                 .add_fact(
                     "but was",
@@ -205,7 +205,7 @@ where
             .add_fact(
                 "though it did contain",
                 // TODO: better error message
-                format!("{:?}", actual_iter.clone().collect::<Vec<_>>()),
+                format!("{:?}", actual_iter.collect::<Vec<_>>()),
             )
             .do_fail()
     }
