@@ -1,9 +1,8 @@
 Assertor
 ========
-Assertor makes test assertions and failure messages more human-friendly.
+Assertor makes test assertions and failure messages more human-readable.
 
-Assertor is nearly Rust port of [Java Truth](https://github.com/google/truth), but is actually not related to Guava team
-who maintains Java Truth library.
+Assertor is heavy affected by [Java Truth](https://github.com/google/truth) in terms of API design and error messages.
 
 ### Disclaimer
 
