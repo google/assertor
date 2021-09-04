@@ -5,6 +5,7 @@ mod assertions;
 mod base;
 
 pub use assertions::basic::{ComparableAssertion, EqualityAssertion};
+#[cfg(feature = "float")]
 pub use assertions::float::FloatAssertion;
 pub use assertions::iterator::IteratorAssertion;
 pub use assertions::map::MapAssertion;
