@@ -1,3 +1,4 @@
+pub use crate::assertions::testing::AssertionResultAssertion;
 use crate::{AssertionResult, ReturnStrategy};
 
 /// An assertion macro that returns [`Result<(), AssertionResult>`](`CheckThatResult`) as an
@@ -21,7 +22,6 @@ macro_rules! check_that {
 }
 
 pub type CheckThatResult = Result<(), AssertionResult>;
-
 
 impl ReturnStrategy<CheckThatResult> for AssertionResult {
     fn do_fail(&self) -> CheckThatResult {

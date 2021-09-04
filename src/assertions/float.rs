@@ -1,7 +1,9 @@
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
-use num_traits::{Float, Zero};
 use std::borrow::Borrow;
 use std::fmt::Debug;
+
+use num_traits::{Float, Zero};
+
+use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 
 pub trait FloatAssertion<'a, S, R> {
     fn with_rel_tol(self, rel_tol: S) -> Subject<'a, S, FloatTolerance<S>, R>;
@@ -118,8 +120,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::testing::*;
     use crate::*;
+
+    use super::*;
 
     #[test]
     fn is_approx_equal_to() {

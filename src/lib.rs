@@ -12,10 +12,10 @@ pub use assertions::float::FloatAssertion;
 pub use assertions::iterator::IteratorAssertion;
 pub use assertions::map::MapAssertion;
 pub use assertions::result::ResultAssertion;
-pub use assertions::testing::AssertionResultAssertion;
+pub use assertions::set::SetAssertion;
 pub use base::{AssertionResult, Fact, Location, ReturnStrategy, Subject};
 
 mod assertions;
 mod base;
-mod testing;
 
+pub mod testing;

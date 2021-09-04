@@ -1,6 +1,7 @@
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 use std::borrow::Borrow;
 use std::fmt::Debug;
+
+use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 
 pub trait ResultAssertion<R, OK, ERR> {
     fn is_ok(&self) -> R;
@@ -68,8 +69,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::testing::*;
     use crate::*;
+
+    use super::*;
 
     #[test]
     fn is_ok() {

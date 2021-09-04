@@ -34,10 +34,12 @@ where
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use std::iter::FromIterator;
 
+    use crate::testing::*;
     use crate::*;
 
     use super::*;

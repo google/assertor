@@ -1,7 +1,8 @@
-use crate::assertions::iterator::{check_has_length, check_is_empty, IteratorAssertion};
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 use std::borrow::Borrow;
 use std::fmt::Debug;
+
+use crate::assertions::iterator::{check_has_length, check_is_empty, IteratorAssertion};
+use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 
 pub trait VecAssertion<'a, S, T, R>
 where
@@ -66,27 +67,29 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::testing::*;
+    use crate::*;
+
     use super::*;
-    use crate::assertions::result::ResultAssertion;
-    use crate::assertions::string::StringAssertion;
-    use crate::assertions::testing::AssertionResultAssertion;
-    use crate::base::Fact;
-    use crate::{assert_that, check_that};
 
     #[test]
     fn contains() {
         assert_that!(vec![1, 2, 3]).contains(&3);
 
         // Failures
-        assert_that!(check_that!(vec![1, 2, 3]).contains(&10))
-            .fact_value_for_key("expected to contain")
-            .is_same_string_to("10");
+        assert_that!(check_that!(vec![1, 2, 3]).contains(&10)).facts_are(vec![
+            Fact::new("expected to contain", "10"),
+            Fact::new_simple_fact("but did not"),
+            Fact::new("though it did contain", r#"[1, 2, 3]"#),
+        ]);
     }
+
     #[test]
     fn contains_exactly() {
         assert_that!(vec![1, 2, 3]).contains_exactly(vec![1, 2, 3]);
         assert_that!(vec![2, 1, 3]).contains_exactly(vec![1, 2, 3]);
     }
+
     #[test]
     fn contains_exactly_in_order() {
         assert_that!(vec![1, 2, 3]).contains_exactly_in_order(vec![1, 2, 3]);
@@ -97,6 +100,7 @@ mod tests {
             ],
         )
     }
+
     #[test]
     fn is_empty() {
         assert_that!(Vec::<usize>::new()).is_empty();
@@ -105,6 +109,7 @@ mod tests {
         assert_that!(check_that!(vec![1]).is_empty())
             .facts_are(vec![Fact::new_simple_fact("expected to be empty")])
     }
+
     #[test]
     fn has_size() {
         assert_that!(vec![1, 2, 3]).has_length(3);

@@ -1,6 +1,7 @@
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 use std::borrow::Borrow;
 use std::fmt::Debug;
+
+use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 
 pub trait IteratorAssertion<'a, S, T, R>
 where
@@ -349,8 +350,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::testing::*;
     use crate::*;
+
+    use super::*;
 
     #[test]
     fn contains() {

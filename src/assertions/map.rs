@@ -9,21 +9,21 @@ use crate::assertions::iterator::check_is_empty;
 use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 
 pub trait MapAssertion<'a, K, V, R>
-    where
-        AssertionResult: ReturnStrategy<R>,
+where
+    AssertionResult: ReturnStrategy<R>,
 {
     fn has_length(&self, length: usize) -> R;
     fn is_empty(&self) -> R;
     fn contains_key<BK>(&self, key: BK) -> R
-        where
-            BK: Borrow<K>,
-            K: Eq + Hash + Debug;
+    where
+        BK: Borrow<K>,
+        K: Eq + Hash + Debug;
     fn key_set(&self) -> Subject<Keys<K, V>, (), R>;
 }
 
 impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R>
-    where
-        AssertionResult: ReturnStrategy<R>,
+where
+    AssertionResult: ReturnStrategy<R>,
 {
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
@@ -31,7 +31,7 @@ impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R
             Some(format!("{}.len()", self.description_or_expr())),
             (),
         )
-            .is_equal_to(length)
+        .is_equal_to(length)
     }
 
     fn is_empty(&self) -> R {
@@ -39,9 +39,9 @@ impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R
     }
 
     fn contains_key<BK>(&self, key: BK) -> R
-        where
-            BK: Borrow<K>,
-            K: Eq + Hash + Debug,
+    where
+        BK: Borrow<K>,
+        K: Eq + Hash + Debug,
     {
         if self.actual().contains_key(key.borrow()) {
             self.new_result().do_ok()
@@ -69,8 +69,8 @@ impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R
 
 #[cfg(test)]
 mod tests {
+    use crate::testing::*;
     use crate::*;
-    use crate::assertions::set::SetAssertion;
 
     use super::*;
 

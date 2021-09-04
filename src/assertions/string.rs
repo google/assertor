@@ -45,8 +45,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::testing::*;
     use crate::*;
+
+    use super::*;
 
     #[test]
     fn is_same_string_to() {
