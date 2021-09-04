@@ -123,7 +123,7 @@ mod tests {
         // failures
         let result = check_that!(map_abc).contains_key("not exist");
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new("expected to contain key", "\"not exist\""),
+            Fact::new("expected to contain key", r#""not exist""#),
             Fact::new_simple_fact("but did not"),
             Fact::new_splitter(),
         ]);

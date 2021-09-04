@@ -57,8 +57,8 @@ mod tests {
         assert_that!("ninja".to_string()).is_same_string_to("ninja");
         assert_that!("ninja".to_string()).is_same_string_to("ninja".to_string());
         assert_that!(check_that!("ninja").is_same_string_to("bar")).facts_are(vec![
-            Fact::new("expected", "\"bar\""),
-            Fact::new("actual", "\"ninja\""),
+            Fact::new("expected", r#""bar""#),
+            Fact::new("actual", r#""ninja""#),
         ]);
     }
 
