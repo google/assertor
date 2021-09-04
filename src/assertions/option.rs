@@ -4,16 +4,31 @@ use std::fmt::Debug;
 use crate::base::AssertionApi;
 use crate::{AssertionResult, AssertionStrategy, Subject};
 
+/// Trait for option assertion.
+///
+/// # Example
+/// ```
+/// use assertor::*;
+///
+/// assert_that!(Option::Some(1)).has_value(1);
+/// assert_that!(Option::Some(1)).is_some();
+/// assert_that!(Option::<usize>::None).is_none();
+/// ```
 pub trait OptionAssertion<'a, T, R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    /// Checks the subject is [`Option::None`].
     fn is_none(&self) -> R
     where
         T: PartialEq + Debug;
+
+    /// Checks the subject is [`Option::Some(_)`](`Option::Some`).
     fn is_some(&self) -> R
     where
         T: PartialEq + Debug;
+
+    /// Checks the subject is [`Option::Some(expected)`](`Option::Some`).
     fn has_value<B>(&self, expected: B) -> R
     where
         B: Borrow<T>,
