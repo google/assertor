@@ -18,5 +18,5 @@ pub use base::{AssertionResult, Fact, Location, ReturnStrategy, Subject};
 mod assertions;
 mod base;
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(test, doc, feature = "testing"))]
 pub mod testing;

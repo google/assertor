@@ -9,5 +9,5 @@ pub mod vec;
 #[cfg(feature = "float")]
 pub mod float;
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(test, doc, feature = "testing"))]
 pub(crate) mod testing;
