@@ -22,5 +22,6 @@ pub use base::{AssertionResult, Fact, Location, ReturnStrategy, Subject};
 mod assertions;
 mod base;
 
-#[cfg(any(test, feature = "testing"))]
-pub mod testing;
+// TODO: make this public once API gets stable.
+#[cfg(any(test, doc, feature = "testing"))]
+pub(crate) mod testing;
