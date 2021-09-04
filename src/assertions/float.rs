@@ -1,5 +1,5 @@
 use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
-use num::{Float, Zero};
+use num_traits::{Float, Zero};
 use std::borrow::Borrow;
 use std::fmt::Debug;
 

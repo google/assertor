@@ -1,4 +1,5 @@
-extern crate num;
+#[cfg(feature = "float")]
+extern crate num_traits;
 
 #[allow(unused_imports)]
 use assertions::basic::{ComparableAssertion, EqualityAssertion};
