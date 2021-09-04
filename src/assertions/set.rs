@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait SetAssertion<'a, S, T, R> {
     fn contains<B: Borrow<T>>(&self, expected: B) -> R
@@ -13,7 +13,7 @@ pub trait SetAssertion<'a, S, T, R> {
 
 impl<'a, T, R> SetAssertion<'a, HashSet<T>, T, R> for Subject<'a, HashSet<T>, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn contains<B: Borrow<T>>(&self, expected: B) -> R
     where

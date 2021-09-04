@@ -13,8 +13,8 @@ macro_rules! assert_that {
                 .to_string()
                 .replace(" ", "")
                 .replace("\n", ""),
-            /*description=*/ None,
-            /*option=*/ (),
+            /* description= */ None,
+            /* option= */ (),
             Some($crate::Location::new(
                 file!().to_string(),
                 line!(),
@@ -244,13 +244,21 @@ impl<'a, Sub, Opt, Ret> AssertionApi<'a, Sub, Opt, Ret> for Subject<'a, Sub, Opt
     }
 }
 
-pub trait ReturnStrategy<R> {
+/// A behavior for assertion pass and failure. [`AssertionResult`] implements this traits.  
+///
+/// Behavior for assertion pass and failure is different between [`assert_that`] and [`check_that`].
+/// [`assert_that`] panics when assertion fails, but [`check_that`] results a struct in both cases.
+/// Those assertion behavior is switched by [`Subject.return_type`] and [`AssertionStrategy`].
+pub trait AssertionStrategy<R> {
+    /// Behavior when assertion fails.
     fn do_fail(&self) -> R;
+
+    /// Behavior when assertion passes.
     fn do_ok(&self) -> R;
 }
 
-impl ReturnStrategy<()> for AssertionResult {
-    fn do_fail(&self) {
+impl AssertionStrategy<()> for AssertionResult {
+    fn do_fail(&self) -> () {
         std::panic::panic_any(self.generate_message());
     }
 
@@ -390,6 +398,7 @@ impl Fact {
 
 #[cfg(test)]
 mod tests {
+    use crate::testing::CheckThatResult;
     use crate::*;
 
     use super::*;
@@ -421,11 +430,11 @@ mod tests {
     fn check_that_result_return_type() {
         assert_eq!(
             check_that!(1).return_type,
-            PhantomData::<Result<(), AssertionResult>>::default()
+            PhantomData::<CheckThatResult>::default()
         );
         assert_eq!(
             check_that!(vec![""]).return_type,
-            PhantomData::<Result<(), AssertionResult>>::default()
+            PhantomData::<CheckThatResult>::default()
         );
     }
 

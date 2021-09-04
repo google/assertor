@@ -1,5 +1,5 @@
 use crate::assertions::basic::EqualityAssertion;
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait StringAssertion<R> {
     fn is_same_string_to<E: Into<String>>(&self, expected: E) -> R;
@@ -8,7 +8,7 @@ pub trait StringAssertion<R> {
 
 impl<'s, R> StringAssertion<R> for Subject<'_, String, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn is_same_string_to<E: Into<String>>(&self, expected: E) -> R {
         let subject: Subject<String, (), R> = self.new_subject(self.actual(), None, ());
@@ -30,7 +30,7 @@ where
 
 impl<'s, R> StringAssertion<R> for Subject<'_, &str, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn is_same_string_to<E: Into<String>>(&self, expected: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())

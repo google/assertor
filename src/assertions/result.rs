@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait ResultAssertion<R, OK, ERR> {
     fn is_ok(&self) -> R;
@@ -16,7 +16,7 @@ pub trait ResultAssertion<R, OK, ERR> {
 
 impl<R, OK: Debug, ERR: Debug> ResultAssertion<R, OK, ERR> for Subject<'_, Result<OK, ERR>, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn is_ok(&self) -> R {
         if self.actual().is_ok() {

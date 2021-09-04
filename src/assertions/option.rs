@@ -2,11 +2,11 @@ use std::borrow::Borrow;
 use std::fmt::Debug;
 
 use crate::base::AssertionApi;
-use crate::{AssertionResult, ReturnStrategy, Subject};
+use crate::{AssertionResult, AssertionStrategy, Subject};
 
 pub trait OptionAssertion<'a, T, R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn is_none(&self) -> R
     where
@@ -22,7 +22,7 @@ where
 
 impl<'a, T, R> OptionAssertion<'a, T, R> for Subject<'a, Option<T>, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn is_none(&self) -> R
     where

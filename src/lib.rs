@@ -17,7 +17,7 @@ pub use assertions::result::ResultAssertion;
 pub use assertions::set::SetAssertion;
 pub use assertions::string::StringAssertion;
 pub use assertions::vec::VecAssertion;
-pub use base::{AssertionResult, Fact, Location, ReturnStrategy, Subject};
+pub use base::{AssertionResult, AssertionStrategy, Fact, Location, Subject};
 
 mod assertions;
 mod base;

@@ -2,10 +2,10 @@ use std::borrow::Borrow;
 use std::collections::HashSet;
 
 use crate::assertions::iterator::IteratorAssertion;
-use crate::base::{AssertionApi, AssertionResult, Fact, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Fact, Subject};
 use crate::testing::CheckThatResult;
 
-pub trait AssertionResultAssertion<'a, R> {
+pub trait CheckThatResultAssertion<'a, R> {
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R;
     fn facts_are_at_least<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R;
     // Returns subject of fact value for the first matched key.
@@ -19,13 +19,14 @@ fn get_assertion_result<'a, 'o, R>(
     subject
         .actual()
         .as_ref()
+        .as_ref()
         // TODO: Improve error message; should have line-no.
         .expect_err("Expected Err but got Ok because this is assertion for error message.")
 }
 
-impl<'a, R> AssertionResultAssertion<'a, R> for Subject<'a, CheckThatResult, (), R>
+impl<'a, R> CheckThatResultAssertion<'a, R> for Subject<'a, CheckThatResult, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, expected: B) -> R {
         self.new_owned_subject(
@@ -105,7 +106,7 @@ mod tests {
 
     impl<'a, S, R> TestAssertion<'a, S, R> for Subject<'a, S, (), R>
     where
-        AssertionResult: ReturnStrategy<R>,
+        AssertionResult: AssertionStrategy<R>,
     {
         fn is_same_to<B>(&self, expected: B) -> R
         where

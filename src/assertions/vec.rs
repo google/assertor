@@ -2,11 +2,11 @@ use std::borrow::Borrow;
 use std::fmt::Debug;
 
 use crate::assertions::iterator::{check_has_length, check_is_empty, IteratorAssertion};
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait VecAssertion<'a, S, T, R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
     Self: Sized,
 {
     fn contains<B>(&self, element: B) -> R
@@ -29,7 +29,7 @@ where
 
 impl<'a, T, R> VecAssertion<'a, Vec<T>, T, R> for Subject<'a, Vec<T>, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn contains<B>(&self, element: B) -> R
     where

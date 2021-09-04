@@ -6,11 +6,11 @@ use std::hash::Hash;
 
 use crate::assertions::basic::EqualityAssertion;
 use crate::assertions::iterator::check_is_empty;
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait MapAssertion<'a, K, V, R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn has_length(&self, length: usize) -> R;
     fn is_empty(&self) -> R;
@@ -23,7 +23,7 @@ where
 
 impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
@@ -149,8 +149,8 @@ mod tests {
             Fact::new("value of", "map_abc.keys()"),
             Fact::new("expected to contain", "\"not exist\""),
             Fact::new_simple_fact("but did not"),
-            // TODO: fix unstable value order.
-            // Fact::new("though it did contain", r#"["c", "a", "b"]"#),
+            /* TODO: fix unstable value order.
+             * Fact::new("though it did contain", r#"["c", "a", "b"]"#), */
         ]);
         assert_that!(result)
             .fact_keys()

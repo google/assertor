@@ -3,7 +3,7 @@ use std::fmt::Debug;
 
 use num_traits::{Float, Zero};
 
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait FloatAssertion<'a, S, R> {
     fn with_rel_tol(self, rel_tol: S) -> Subject<'a, S, FloatTolerance<S>, R>;
@@ -59,7 +59,7 @@ impl Default for FloatTolerance<f64> {
 impl<'a, S, R> FloatAssertion<'a, S, R> for Subject<'a, S, FloatTolerance<S>, R>
 where
     S: Float + Debug,
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn with_rel_tol(mut self, rel_tol: S) -> Subject<'a, S, FloatTolerance<S>, R> {
         self.option_mut().rel_tol = rel_tol;
@@ -89,7 +89,7 @@ where
 impl<'a, S, R: 'a> FloatAssertion<'a, S, R> for Subject<'a, S, (), R>
 where
     S: Float + Debug,
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn with_rel_tol(self, rel_tol: S) -> Subject<'a, S, FloatTolerance<S>, R> {
         // XXX: consider to remove clone.

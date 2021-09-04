@@ -1,11 +1,11 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait IteratorAssertion<'a, S, T, R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn contains<B>(&self, element: B) -> R
     where
@@ -36,7 +36,7 @@ where
 impl<'a, S, T, R> IteratorAssertion<'a, S, T, R> for Subject<'a, S, (), R>
 where
     S: Iterator<Item = T> + Clone,
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn contains<B>(&self, element: B) -> R
     where
@@ -174,7 +174,7 @@ where
 
 pub(crate) fn check_is_empty<I, T, R>(assertion_result: AssertionResult, mut actual_iter: I) -> R
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
     I: Iterator<Item = T> + Clone,
 {
     if actual_iter.next().is_none() {
@@ -192,7 +192,7 @@ pub(crate) fn check_contains<I, T, R>(
     element: &T,
 ) -> R
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
     I: Iterator<Item = T> + Clone,
     T: PartialEq + Debug,
 {
@@ -358,7 +358,7 @@ pub(crate) fn check_has_length<I, T, R>(
     length: usize,
 ) -> R
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
     I: Iterator<Item = T> + Clone,
 {
     let actual = actual_iter.count();

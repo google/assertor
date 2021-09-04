@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 pub trait EqualityAssertion<S, R> {
     fn is_equal_to<B: Borrow<S>>(&self, expected: B) -> R;
@@ -10,7 +10,7 @@ pub trait EqualityAssertion<S, R> {
 
 impl<S: PartialEq + Debug, R> EqualityAssertion<S, R> for Subject<'_, S, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn is_equal_to<B: Borrow<S>>(&self, expected: B) -> R {
         if self.actual().eq(expected.borrow()) {
@@ -47,7 +47,7 @@ pub trait ComparableAssertion<S, R> {
 
 impl<S: PartialOrd + Debug, R> ComparableAssertion<S, R> for Subject<'_, S, (), R>
 where
-    AssertionResult: ReturnStrategy<R>,
+    AssertionResult: AssertionStrategy<R>,
 {
     fn is_at_least<B: Borrow<S>>(&self, expected: B) -> R {
         if self.actual().ge(expected.borrow()) {
