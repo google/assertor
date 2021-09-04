@@ -9,21 +9,21 @@ use crate::assertions::iterator::check_is_empty;
 use crate::base::{AssertionApi, AssertionResult, ReturnStrategy, Subject};
 
 pub trait MapAssertion<'a, K, V, R>
-where
-    AssertionResult: ReturnStrategy<R>,
+    where
+        AssertionResult: ReturnStrategy<R>,
 {
     fn has_length(&self, length: usize) -> R;
     fn is_empty(&self) -> R;
     fn contains_key<BK>(&self, key: BK) -> R
-    where
-        BK: Borrow<K>,
-        K: Eq + Hash + Debug;
+        where
+            BK: Borrow<K>,
+            K: Eq + Hash + Debug;
     fn key_set(&self) -> Subject<Keys<K, V>, (), R>;
 }
 
 impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R>
-where
-    AssertionResult: ReturnStrategy<R>,
+    where
+        AssertionResult: ReturnStrategy<R>,
 {
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
@@ -31,7 +31,7 @@ where
             Some(format!("{}.len()", self.description_or_expr())),
             (),
         )
-        .is_equal_to(length)
+            .is_equal_to(length)
     }
 
     fn is_empty(&self) -> R {
@@ -39,9 +39,9 @@ where
     }
 
     fn contains_key<BK>(&self, key: BK) -> R
-    where
-        BK: Borrow<K>,
-        K: Eq + Hash + Debug,
+        where
+            BK: Borrow<K>,
+            K: Eq + Hash + Debug,
     {
         if self.actual().contains_key(key.borrow()) {
             self.new_result().do_ok()
@@ -66,10 +66,11 @@ where
         )
     }
 }
+
 #[cfg(test)]
 mod tests {
-    use crate::assertions::set::SetAssertion;
     use crate::*;
+    use crate::assertions::set::SetAssertion;
 
     use super::*;
 
@@ -145,13 +146,15 @@ mod tests {
         // failures
         let result = check_that!(map_abc).key_set().contains(&"not exist");
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new("expected to contain key", "\"not exist\""),
+            Fact::new("value of", "map_abc.keys()"),
+            Fact::new("expected to contain", "\"not exist\""),
             Fact::new_simple_fact("but did not"),
-            Fact::new_splitter(),
+            // TODO: fix unstable value order.
+            // Fact::new("though it did contain", r#"["c", "a", "b"]"#),
         ]);
         assert_that!(result)
             .fact_keys()
-            .contains(&"though it did contain keys".to_string());
+            .contains(&"though it did contain".to_string());
         // Skip test for value because key order is not stable.
     }
 }
