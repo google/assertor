@@ -254,18 +254,18 @@ impl<'a, Sub, Opt, Ret> AssertionApi<'a, Sub, Opt, Ret> for Subject<'a, Sub, Opt
 /// Those assertion behavior is switched by [`Subject.return_type`] and [`AssertionStrategy`].
 pub trait AssertionStrategy<R> {
     /// Behavior when assertion fails.
-    fn do_fail(&self) -> R;
+    fn do_fail(self) -> R;
 
     /// Behavior when assertion passes.
-    fn do_ok(&self) -> R;
+    fn do_ok(self) -> R;
 }
 
 impl AssertionStrategy<()> for AssertionResult {
-    fn do_fail(&self) {
+    fn do_fail(self) {
         std::panic::panic_any(self.generate_message());
     }
 
-    fn do_ok(&self) {}
+    fn do_ok(self) {}
 }
 
 /// Contains assertion results which will be shown in the assertion messages.

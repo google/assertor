@@ -35,12 +35,12 @@ macro_rules! check_that {
 pub struct CheckThatResult(Result<(), AssertionResult>);
 
 impl AssertionStrategy<CheckThatResult> for AssertionResult {
-    fn do_fail(&self) -> CheckThatResult {
+    fn do_fail(self) -> CheckThatResult {
         // XXX: Maybe removable clone. Think better way.
-        CheckThatResult(Err(self.clone()))
+        CheckThatResult(Err(self))
     }
 
-    fn do_ok(&self) -> CheckThatResult {
+    fn do_ok(self) -> CheckThatResult {
         // XXX: Unnecessary AssertionResult instantiation for ok cases.
         CheckThatResult(Ok(()))
     }
