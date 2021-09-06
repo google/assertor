@@ -111,7 +111,7 @@ impl<'a, S> Deref for ActualValue<'a, S> {
 /// API for assertion library developer.
 ///
 /// Note: This trait hides methods for library developer from library users.
-/// TODO(koku): think better name...
+/// TODO: think better name...
 pub trait AssertionApi<'a, Sub, Opt, Ret> {
     /// Builds a new instance of [AssertionResult].
     fn new_result(&self) -> AssertionResult;
