@@ -2,7 +2,7 @@ Assertor
 ========
 Assertor makes test assertions and failure messages more human-readable.
 
-Assertor is heavy affected by [Java Truth](https://github.com/google/truth) in terms of API design and error messages.
+Assertor is heavyly affected by [Java Truth](https://github.com/google/truth) in terms of API design and error messages. Assertor is a totally different project from Java Truth.
 
 ### Disclaimer
 
