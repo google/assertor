@@ -49,26 +49,6 @@ fn test_it() {
 - [ ] Color / Bold
 - [ ] Better diff: vec
 - [ ] Better diff: set
+- [ ] Better diff: HashMap
 
-## Non goals
 
-#### Structural diff similarity to [ProtoTruth](https://truth.dev/protobufs)
-
-**Preferred:** Define custom `Assertion` or assert multiple.
-
-```rust
-struct Foo {
-    name: String,
-    ids: Vec<usize>,
-}
-
-fn test_it() {
-    let act = Foo { name: "abc", ids: vec![1, 2, 3] };
-    let exp = Foo { name: "xyz", ids: vec![3, 2, 1] };
-    assert_that!(act).ignoring_field_order("ids").is_equal_to(exp);
-
-    // Preferred
-    assert_that!(act.name).is_same_string_to(exp.name);
-    assert_that!(act.ids).contains_exactly(exp.ids);
-}
-```
