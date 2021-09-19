@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod basic;
+pub mod boolean;
 pub mod iterator;
 pub mod map;
 pub mod option;

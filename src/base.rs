@@ -39,7 +39,8 @@ macro_rules! assert_that {
     };
 }
 
-/// Subject structure that contains actual value with auxiliary data (ex. line pos, description).
+/// Data structure that contains a value to be tested (actual value) with auxiliary data (ex. line
+/// pos, description).
 pub struct Subject<'a, Sub, Opt, Ret> {
     actual: ActualValue<'a, Sub>,
 
@@ -324,7 +325,7 @@ impl AssertionResult {
         messages.push(format!(
             "assertion failed{maybe_loc}",
             maybe_loc = match &self.location {
-                None => format!(""),
+                None => String::new(),
                 Some(loc) => format!(": {}", loc),
             }
         ));
@@ -361,9 +362,9 @@ impl AssertionResult {
     }
 }
 
-impl std::fmt::Debug for AssertionResult {
+impl Debug for AssertionResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.generate_message())
+        f.write_str(&self.generate_message())
     }
 }
 

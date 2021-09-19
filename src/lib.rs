@@ -32,6 +32,7 @@
 //!
 //! assert_that!(Option::Some("Foo")).has_value("Foo");
 //! ```
+//!
 //! ## Failure cases
 //! ```should_panic
 //! use assertor::*;
@@ -48,6 +49,7 @@
 extern crate num_traits;
 
 pub use assertions::basic::{ComparableAssertion, EqualityAssertion};
+pub use assertions::boolean::BooleanAssertion;
 #[cfg(feature = "float")]
 pub use assertions::float::FloatAssertion;
 pub use assertions::iterator::IteratorAssertion;
@@ -61,6 +63,8 @@ pub use base::{AssertionResult, AssertionStrategy, Fact, Location, Subject};
 
 mod assertions;
 mod base;
+mod diff;
 
+/// Module for testing the assertor library itself. Expected to be used by library developers.
 #[cfg(any(test, doc, feature = "testing"))]
 pub mod testing;

@@ -21,6 +21,7 @@ use std::hash::Hash;
 use crate::assertions::basic::EqualityAssertion;
 use crate::assertions::iterator::check_is_empty;
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
+use crate::diff::{MapComparison, MapValueDiff};
 
 /// Trait for map assertion.
 ///
@@ -57,6 +58,20 @@ where
     where
         BK: Borrow<K>,
         K: Eq + Hash + Debug;
+
+    /// Checks that the subject has entry with the given `key` and `value`.
+    fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
+    where
+        BK: Borrow<K>,
+        BV: Borrow<V>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug;
+
+    fn contains_all<BM>(&self, expected: BM) -> R
+    where
+        BM: Borrow<HashMap<K, V>>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug;
 
     /// Returns a new subject which is an key set of the subject and which implements
     /// [`crate::IteratorAssertion`].
@@ -118,7 +133,117 @@ where
         }
     }
 
-    fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
+    fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
+    where
+        BK: Borrow<K>,
+        BV: Borrow<V>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug,
+    {
+        let actual_value = self.actual().get(key.borrow());
+        if Some(value.borrow()) == actual_value {
+            self.new_result().do_ok()
+        } else if actual_value.is_none() {
+            self.new_result()
+                .add_fact(
+                    "expected key to be mapped to value",
+                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                )
+                .add_fact("but key was not found", format!("{:?}", key.borrow()))
+                .add_splitter()
+                .add_fact(
+                    "though it did contain keys",
+                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                )
+                .do_fail()
+        } else {
+            self.new_result()
+                .add_fact(
+                    "expected key to be mapped to value",
+                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                )
+                .add_fact(
+                    "but key was mapped to a different value",
+                    format!("{:?}", actual_value.unwrap().borrow()),
+                )
+                .add_splitter()
+                .add_fact(
+                    "though it did contain keys",
+                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                )
+                .do_fail()
+        }
+    }
+
+    fn contains_all<BM>(&self, expected: BM) -> R
+    where
+        BM: Borrow<HashMap<K, V>>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug,
+    {
+        let expected_map = expected.borrow();
+        let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
+        if diff.common.len() == expected_map.len() {
+            return self.new_result().do_ok();
+        }
+        let mut result = self.new_result();
+        if !diff.exclusive_right.is_empty() {
+            result = result
+                .add_fact(
+                    "expected to contain all entries",
+                    format!(
+                        "but {} {} not found",
+                        diff.exclusive_right.len(),
+                        if diff.exclusive_right.len() == 1 {
+                            "entry"
+                        } else {
+                            "entries"
+                        }
+                    ),
+                )
+                .add_splitter();
+            for (key, value) in diff.exclusive_right {
+                result =
+                    result.add_fact("entry was not found", format!("{:?} -> {:?}", key, value));
+            }
+        }
+        if !diff.different_values.is_empty() {
+            if !result.facts().is_empty() {
+                result = result.add_splitter();
+            }
+            result = result
+                .add_fact(
+                    "expected to contain the same entries",
+                    format!(
+                        "but found {} {} different",
+                        diff.different_values.len(),
+                        if diff.different_values.len() == 1 {
+                            "entry that is"
+                        } else {
+                            "entries that are"
+                        }
+                    ),
+                )
+                .add_splitter();
+            for MapValueDiff {
+                key,
+                left_value,
+                right_value,
+            } in diff.different_values
+            {
+                result = result.add_fact(
+                    format!("key {:?} was mapped to an unexpected value", key),
+                    format!(
+                        "expected value {:?}, but found {:?}",
+                        right_value, left_value
+                    ),
+                );
+            }
+        }
+        return result.do_fail();
+    }
+
+    fn key_set(&self) -> Subject<Keys<K, V>, (), R> {
         self.new_owned_subject(
             self.actual().keys(),
             Some(format!("{}.keys()", self.description_or_expr())),
@@ -216,5 +341,94 @@ mod tests {
             .fact_keys()
             .contains(&"though it did contain".to_string());
         // Skip test for value because key order is not stable.
+    }
+
+    #[test]
+    fn contains_entry() {
+        let mut map_abc: HashMap<&str, &str> = HashMap::new();
+        map_abc.insert("a", "1");
+        map_abc.insert("b", "2");
+        map_abc.insert("c", "3");
+        assert_that!(map_abc).contains_entry("a", "1");
+        assert_that!(map_abc).contains_entry("b", "2");
+        assert_that!(map_abc).contains_entry("c", "3");
+
+        // failures: missing key
+        let result = check_that!(map_abc).contains_entry("not exist", "1");
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected key to be mapped to value",
+                r#""not exist" -> "1""#,
+            ),
+            Fact::new("but key was not found", r#""not exist""#),
+            Fact::new_splitter(),
+        ]);
+        assert_that!(result)
+            .fact_keys()
+            .contains(&"though it did contain keys".to_string());
+        // Skip test for value because key order is not stable.
+
+        // failures: not equal value
+        let result = check_that!(map_abc).contains_entry("a", "2");
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new("expected key to be mapped to value", r#""a" -> "2""#),
+            Fact::new("but key was mapped to a different value", r#""1""#),
+            Fact::new_splitter(),
+        ]);
+        assert_that!(result)
+            .fact_keys()
+            .contains(&"though it did contain keys".to_string());
+        // Skip test for value because key order is not stable.
+    }
+
+    #[test]
+    fn contains_all() {
+        let mut map_abc: HashMap<&str, &str> = HashMap::new();
+        map_abc.insert("a", "1");
+        map_abc.insert("b", "2");
+        map_abc.insert("c", "3");
+        assert_that!(map_abc).contains_all(HashMap::from([("a", "1")]));
+        assert_that!(map_abc).contains_all(HashMap::from([("a", "1"), ("b", "2")]));
+
+        // case 1: missing key
+        let result = check_that!(map_abc).contains_all(HashMap::from([("not exist", "1")]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new("expected to contain all entries", "but 1 entry not found"),
+            Fact::new_splitter(),
+            Fact::new("entry was not found", r#""not exist" -> "1""#),
+        ]);
+
+        // case 2: mismatched entries
+        let result = check_that!(map_abc).contains_all(HashMap::from([("c", "5")]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected to contain the same entries",
+                "but found 1 entry that is different",
+            ),
+            Fact::new_splitter(),
+            Fact::new(
+                r#"key "c" was mapped to an unexpected value"#,
+                r#"expected value "5", but found "3""#,
+            ),
+        ]);
+
+        // case 3: both mismatched and absent key
+        let result =
+            check_that!(map_abc).contains_all(HashMap::from([("not exist", "1"), ("c", "5")]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new("expected to contain all entries", "but 1 entry not found"),
+            Fact::new_splitter(),
+            Fact::new("entry was not found", r#""not exist" -> "1""#),
+            Fact::new_splitter(),
+            Fact::new(
+                "expected to contain the same entries",
+                "but found 1 entry that is different",
+            ),
+            Fact::new_splitter(),
+            Fact::new(
+                r#"key "c" was mapped to an unexpected value"#,
+                r#"expected value "5", but found "3""#,
+            ),
+        ]);
     }
 }

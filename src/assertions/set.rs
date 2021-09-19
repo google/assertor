@@ -17,7 +17,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use crate::assertions::iterator::check_is_empty;
+use crate::assertions::iterator::{check_is_empty, IteratorAssertion};
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 use crate::EqualityAssertion;
 
@@ -62,6 +62,17 @@ pub trait SetAssertion<'a, S, T, R> {
     fn contains<B: Borrow<T>>(&self, expected: B) -> R
     where
         T: PartialEq + Eq + Debug + Hash;
+
+    /// Checks that the subject does not contain `element`.
+    fn does_not_contain<B>(&self, element: B) -> R
+    where
+        B: Borrow<T>,
+        T: PartialEq + Debug;
+
+    /// Checks that the subject does not contain any element of `elements`.
+    fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
+    where
+        T: PartialEq + Debug;
 }
 
 impl<'a, T, R> SetAssertion<'a, HashSet<T>, T, R> for Subject<'a, HashSet<T>, (), R>
@@ -101,6 +112,23 @@ where
                 )
                 .do_fail()
         }
+    }
+
+    fn does_not_contain<B>(&self, element: B) -> R
+    where
+        B: Borrow<T>,
+        T: PartialEq + Debug,
+    {
+        self.new_owned_subject(self.actual().iter(), None, ())
+            .does_not_contain(element.borrow())
+    }
+
+    fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
+    where
+        T: PartialEq + Debug,
+    {
+        self.new_owned_subject(self.actual().iter(), None, ())
+            .does_not_contain_any(elements.borrow().iter())
     }
 }
 

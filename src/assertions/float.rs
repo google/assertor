@@ -188,7 +188,7 @@ mod tests {
         assert_that!(check_that!(0.1).is_approx_equal_to(0.3)).facts_are(vec![
             Fact::new("expected", "0.3"),
             Fact::new("but was", "0.1"),
-            Fact::new("outside tolerance", "0.00000301"),
+            Fact::new("outside tolerance", "3.01e-6"),
         ])
     }
 }
