@@ -2,7 +2,12 @@ Assertor
 ========
 Assertor makes test assertions and failure messages more human-readable.
 
-Assertor is heavyly affected by [Java Truth](https://github.com/google/truth) in terms of API design and error messages. Assertor is a totally different project from Java Truth.
+[![crates.io](https://img.shields.io/crates/v/assertor.svg)](https://crates.io/crates/assertor)
+[![license](https://img.shields.io/github/license/google/assertor.svg)](https://github.com/google/assertor/LICENSE)
+[![docs.rs](https://docs.rs/assertor/badge.svg)](https://docs.rs/crate/assertor/)
+
+Assertor is heavily affected by [Java Truth](https://github.com/google/truth) in terms of API design and error messages,
+but this is a totally different project from Java Truth.
 
 ### Disclaimer
 
