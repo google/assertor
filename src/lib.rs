@@ -62,6 +62,5 @@ pub use base::{AssertionResult, AssertionStrategy, Fact, Location, Subject};
 mod assertions;
 mod base;
 
-// TODO: make this public once API gets stable.
 #[cfg(any(test, doc, feature = "testing"))]
-pub(crate) mod testing;
+pub mod testing;
