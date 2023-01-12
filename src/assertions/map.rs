@@ -118,7 +118,7 @@ where
         }
     }
 
-    fn key_set(&self) -> Subject<'a, Keys<K, V>, (), R> {
+    fn key_set(&self) -> Subject<Keys<K, V>, (), R> {
         self.new_owned_subject(
             self.actual().keys(),
             Some(format!("{}.keys()", self.description_or_expr())),
