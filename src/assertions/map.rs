@@ -58,6 +58,13 @@ where
         BK: Borrow<K>,
         K: Eq + Hash + Debug;
 
+    fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
+    where
+        BK: Borrow<K>,
+        BV: Borrow<V>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug;
+
     /// Returns a new subject which is an key set of the subject and which implements
     /// [`crate::IteratorAssertion`].
     ///
@@ -109,6 +116,48 @@ where
             self.new_result()
                 .add_fact("expected to contain key", format!("{:?}", key.borrow()))
                 .add_simple_fact("but did not")
+                .add_splitter()
+                .add_fact(
+                    "though it did contain keys",
+                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                )
+                .do_fail()
+        }
+    }
+
+    fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
+    where
+        BK: Borrow<K>,
+        BV: Borrow<V>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug,
+    {
+        let actual_value = self.actual().get(key.borrow());
+        if Some(value.borrow()) == actual_value {
+            self.new_result().do_ok()
+        } else if actual_value.is_none() {
+            self.new_result()
+                .add_fact(
+                    "expected key to be mapped to value",
+                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                )
+                .add_fact("but key was not found", format!("{:?}", key.borrow()))
+                .add_splitter()
+                .add_fact(
+                    "though it did contain keys",
+                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                )
+                .do_fail()
+        } else {
+            self.new_result()
+                .add_fact(
+                    "expected key to be mapped to value",
+                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                )
+                .add_fact(
+                    "but key was mapped to a different value",
+                    format!("{:?}", actual_value.unwrap().borrow()),
+                )
                 .add_splitter()
                 .add_fact(
                     "though it did contain keys",
@@ -215,6 +264,44 @@ mod tests {
         assert_that!(result)
             .fact_keys()
             .contains(&"though it did contain".to_string());
+        // Skip test for value because key order is not stable.
+    }
+
+    #[test]
+    fn contains_entry() {
+        let mut map_abc: HashMap<&str, &str> = HashMap::new();
+        map_abc.insert("a", "1");
+        map_abc.insert("b", "2");
+        map_abc.insert("c", "3");
+        assert_that!(map_abc).contains_entry("a", "1");
+        assert_that!(map_abc).contains_entry("b", "2");
+        assert_that!(map_abc).contains_entry("c", "3");
+
+        // failures: missing key
+        let result = check_that!(map_abc).contains_entry("not exist", "1");
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected key to be mapped to value",
+                r#""not exist" -> "1""#,
+            ),
+            Fact::new("but key was not found", r#""not exist""#),
+            Fact::new_splitter(),
+        ]);
+        assert_that!(result)
+            .fact_keys()
+            .contains(&"though it did contain keys".to_string());
+        // Skip test for value because key order is not stable.
+
+        // failures: not equal value
+        let result = check_that!(map_abc).contains_entry("a", "2");
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new("expected key to be mapped to value", r#""a" -> "2""#),
+            Fact::new("but key was mapped to a different value", r#""1""#),
+            Fact::new_splitter(),
+        ]);
+        assert_that!(result)
+            .fact_keys()
+            .contains(&"though it did contain keys".to_string());
         // Skip test for value because key order is not stable.
     }
 }
