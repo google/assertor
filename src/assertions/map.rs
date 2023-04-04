@@ -58,6 +58,7 @@ where
         BK: Borrow<K>,
         K: Eq + Hash + Debug;
 
+    /// Checks that the subject has entry with the given `key` and `value`.
     fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
     where
         BK: Borrow<K>,
