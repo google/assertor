@@ -33,6 +33,9 @@ pub trait StringAssertion<R> {
     /// Checks that the subject contains `expected`.
     fn contains<E: Into<String>>(&self, expected: E) -> R;
 
+    /// Checks that the subject does not contains `value`.
+    fn does_not_contain<E: Into<String>>(&self, value: E) -> R;
+
     /// Checks that the subject starts with `expected`.
     fn starts_with<E: Into<String>>(&self, expected: E) -> R;
 
@@ -58,6 +61,18 @@ where
                 .add_fact("expected a string that contains", expected_str)
                 .add_fact("but was", self.actual())
                 .do_fail()
+        }
+    }
+
+    fn does_not_contain<E: Into<String>>(&self, value: E) -> R {
+        let expected_str = value.into();
+        if self.actual().contains(&expected_str) {
+            self.new_result()
+                .add_fact("expected a string to not contain", expected_str)
+                .add_fact("but was", self.actual())
+                .do_fail()
+        } else {
+            self.new_result().do_ok()
         }
     }
 
@@ -98,6 +113,11 @@ where
     fn contains<E: Into<String>>(&self, expected: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())
             .contains(expected)
+    }
+
+    fn does_not_contain<E: Into<String>>(&self, value: E) -> R {
+        self.new_owned_subject(self.actual().to_string(), None, ())
+            .does_not_contain(value)
     }
 
     fn starts_with<E: Into<String>>(&self, expected: E) -> R {
@@ -156,6 +176,19 @@ mod tests {
 
         assert_that!(check_that!("foo").contains("baz")).facts_are(vec![
             Fact::new("expected a string that contains", "baz"),
+            Fact::new("but was", "foo"),
+        ])
+    }
+
+    #[test]
+    fn does_not_contain() {
+        assert_that!("foobarbaz").does_not_contain("was");
+        assert_that!("foobarbaz").does_not_contain("bla");
+        assert_that!("foobarbaz").does_not_contain("up");
+        assert_that!("foobarbaz").does_not_contain("x");
+
+        assert_that!(check_that!("foo").does_not_contain("fo")).facts_are(vec![
+            Fact::new("expected a string to not contain", "fo"),
             Fact::new("but was", "foo"),
         ])
     }
