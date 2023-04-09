@@ -57,6 +57,18 @@ where
         B: Borrow<T>,
         T: PartialEq + Debug;
 
+    /// Checks that the subject does not contains the `element`.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3]).does_not_contain(5);
+    /// ```
+    fn does_not_contain<B>(&self, element: B) -> R
+    where
+        B: Borrow<T>,
+        T: PartialEq + Debug;
+
     /// Checks that the subject exactly contains elements of `expected_vec`.
     ///
     /// This method doesn't take care of the order. Use
@@ -90,6 +102,21 @@ where
     /// assert_that!(vec![1,2]).contains_exactly_in_order(vec![1]);
     /// ```
     fn contains_exactly_in_order<B: Borrow<Vec<T>>>(self, expected_vec: B) -> R
+    where
+        T: PartialEq + Debug;
+
+    /// Checks that the subject does not contain any element of `elements`.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3]).does_not_contain_any(vec![0, -5]);
+    /// ```
+    /// ```should_panic
+    /// use assertor::*;
+    /// assert_that!(vec![1,2]).does_not_contain_any(vec![1]);
+    /// ```
+    fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
     where
         T: PartialEq + Debug;
 
@@ -127,6 +154,15 @@ where
             .contains(element.borrow())
     }
 
+    fn does_not_contain<B>(&self, element: B) -> R
+    where
+        B: Borrow<T>,
+        T: PartialEq + Debug,
+    {
+        self.new_owned_subject(self.actual().iter(), None, ())
+            .does_not_contain(element.borrow())
+    }
+
     fn contains_exactly<B: Borrow<Vec<T>>>(self, expected_iter: B) -> R
     where
         T: PartialEq + Debug,
@@ -141,6 +177,14 @@ where
     {
         self.new_owned_subject(self.actual().iter(), None, ())
             .contains_exactly_in_order(expected_iter.borrow().iter())
+    }
+
+    fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
+    where
+        T: PartialEq + Debug,
+    {
+        self.new_owned_subject(self.actual().iter(), None, ())
+            .does_not_contain_any(elements.borrow().iter())
     }
 
     fn is_empty(&self) -> R

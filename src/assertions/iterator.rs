@@ -71,6 +71,30 @@ where
         B: Borrow<T>,
         T: PartialEq + Debug;
 
+    /// Checks that the subject iterator does not contains the element `expected`.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3].iter()).does_not_contain(&5);
+    /// assert_that!("foobar".chars()).does_not_contain(&'x');
+    /// ```
+    /// ```should_panic
+    /// use assertor::*;
+    /// assert_that!("foobar".chars()).does_not_contain(&'a');
+    /// // expected to not contain  : 'a'
+    /// // but element was found
+    /// // though it did contain: ['f', 'o', 'o', 'b', 'a', 'r']
+    /// ```
+    ///
+    /// ## Related:
+    /// - [`crate::StringAssertion::does_not_contain`]
+    /// - [`crate::VecAssertion::does_not_contain`]
+    fn does_not_contain<B>(&self, element: B) -> R
+    where
+        B: Borrow<T>,
+        T: PartialEq + Debug;
+
     /// Checks that the subject exactly contains elements of `expected_iter`.
     ///
     /// This method doesn't take care of the order. Use
@@ -139,6 +163,26 @@ where
     where
         T: PartialEq + Debug;
 
+    /// Checks that the subject does not contains any elements of `elements`.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1, 2, 3].iter()).does_not_contain_any(vec![0, -5].iter());
+    /// assert_that!("foobarbaz".chars()).does_not_contain_any("xyw".chars());
+    /// ```
+    /// ```should_panic
+    /// use assertor::*;
+    /// assert_that!("foobarbaz".chars()).does_not_contain_any("ab".chars());
+    /// // unexpected (2): ['a', 'b']
+    /// //---
+    /// // expected to contain none of : ['a', 'b']
+    /// // but was                     : ['f', 'o', 'o', 'b', 'a', 'r', 'b', 'a', 'z']
+    /// ```
+    fn does_not_contain_any<EI: Iterator<Item = T> + Clone>(&self, elements: EI) -> R
+    where
+        T: PartialEq + Debug;
+
     /// Checks that the subject contains at least all elements of `expected_iter` in the same order.
     ///
     /// # Example
@@ -201,6 +245,14 @@ where
         T: PartialEq + Debug,
     {
         check_contains(self.new_result(), self.actual().clone(), element.borrow())
+    }
+
+    fn does_not_contain<B>(&self, element: B) -> R
+    where
+        B: Borrow<T>,
+        T: PartialEq + Debug,
+    {
+        check_does_not_contain(self.new_result(), self.actual().clone(), element.borrow())
     }
 
     fn contains_exactly<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
@@ -278,6 +330,42 @@ where
                     format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
                 )
                 .do_fail(),
+        }
+    }
+
+    fn does_not_contain_any<EI: Iterator<Item = T> + Clone>(&self, elements: EI) -> R
+    where
+        T: PartialEq + Debug,
+    {
+        let els = elements.clone().collect::<Vec<T>>();
+        // set-like intersection satisfies containment requirement for this case
+        let intersection: Vec<T> = self
+            .actual()
+            .clone()
+            .filter(|el| els.contains(el))
+            .collect();
+        // handle empty iterables
+        if intersection.is_empty()
+            || self.actual().clone().next().is_none()
+            || elements.clone().next().is_none()
+        {
+            self.new_result().do_ok()
+        } else {
+            self.new_result()
+                .add_fact(
+                    format!("found ({})", intersection.len()),
+                    format!("{:?}", intersection),
+                )
+                .add_splitter()
+                .add_fact(
+                    "expected to contain none of",
+                    format!("{:?}", elements.collect::<Vec<_>>()),
+                )
+                .add_fact(
+                    "but was",
+                    format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
+                )
+                .do_fail()
         }
     }
 
@@ -382,6 +470,32 @@ where
     }
 }
 
+pub(crate) fn check_does_not_contain<I, T, R>(
+    assertion_result: AssertionResult,
+    actual_iter: I,
+    element: &T,
+) -> R
+where
+    AssertionResult: AssertionStrategy<R>,
+    I: Iterator<Item = T> + Clone,
+    T: PartialEq + Debug,
+{
+    if actual_iter.clone().any(|x| x.eq(element.borrow())) {
+        assertion_result
+            .add_fact("expected to not contain", format!("{:?}", element))
+            .add_simple_fact("but element was found")
+            .add_fact(
+                "though it did contain",
+                // TODO: better error message
+                format!("{:?}", actual_iter.collect::<Vec<_>>()),
+            )
+            .do_fail()
+    } else {
+        assertion_result.do_ok()
+    }
+}
+
+// TODO: create a disjoint split with ordering for the cases below
 pub(crate) enum ContainsAtLeastResult<T> {
     Yes { is_in_order: bool },
     No { missing: Vec<T> },
@@ -696,5 +810,35 @@ mod tests {
             Fact::new("expected", "3"),
             Fact::new("actual", "0"),
         ]);
+    }
+
+    #[test]
+    fn does_not_contain() {
+        assert_that!(vec![1, 2, 3].iter()).does_not_contain(&5);
+        assert_that!(Vec::<usize>::new().iter()).does_not_contain(&0);
+
+        // Failures
+        assert_that!(check_that!(vec![1].iter()).does_not_contain(&1)).facts_are(vec![
+            Fact::new("expected to not contain", "1"),
+            Fact::new_simple_fact("but element was found"),
+            Fact::new("though it did contain", "[1]"),
+        ]);
+    }
+
+    #[test]
+    fn does_not_contain_any() {
+        assert_that!(vec![1, 2, 3].iter()).does_not_contain_any(vec![4, 5].iter());
+        assert_that!(vec![1, 2, 3].iter()).does_not_contain_any(vec![].iter());
+        assert_that!(Vec::<usize>::new().iter()).does_not_contain_any(vec![1, 2, 3].iter());
+        assert_that!(Vec::<usize>::new().iter()).does_not_contain_any(Vec::<usize>::new().iter());
+
+        // Failures
+        assert_that!(check_that!(vec![1, 2, 3].iter()).does_not_contain_any(vec![2, 3].iter()))
+            .facts_are(vec![
+                Fact::new("found (2)", "[2, 3]"),
+                Fact::new_splitter(),
+                Fact::new("expected to contain none of", "[2, 3]"),
+                Fact::new("but was", "[1, 2, 3]"),
+            ]);
     }
 }
