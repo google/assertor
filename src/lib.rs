@@ -61,6 +61,7 @@ pub use base::{AssertionResult, AssertionStrategy, Fact, Location, Subject};
 
 mod assertions;
 mod base;
+mod diff;
 
 #[cfg(any(test, doc, feature = "testing"))]
 pub mod testing;
