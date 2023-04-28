@@ -16,16 +16,16 @@ pub(crate) struct MapComparison<K: Eq + Hash + Debug, V: Eq + Debug> {
     pub(crate) common: Vec<(K, V)>,
 }
 
-pub(crate) struct SequenceComparison<V: Eq + Debug, C: IntoIterator<Item=V>> {
-    pub(crate) exclusive_left: C,
-    pub(crate) exclusive_right: C,
+pub(crate) struct SequenceComparison<V: Eq + Debug> {
+    pub(crate) exclusive_left: Vec<(V, usize)>,
+    pub(crate) exclusive_right: Vec<(V, usize)>,
     pub(crate) common: Vec<(V, usize)>,
 }
 
-pub(crate) struct SetComparison<V: Eq + Debug + Hash, C: IntoIterator<Item=V>> {
-    pub(crate) exclusive_left: C,
-    pub(crate) exclusive_right: C,
-    pub(crate) common: HashSet<V>,
+pub(crate) struct SetComparison<V: Eq + Debug + Hash> {
+    pub(crate) exclusive_left: Vec<V>,
+    pub(crate) exclusive_right: Vec<V>,
+    pub(crate) common: Vec<V>,
 }
 
 pub(crate) enum SubSequenceComparison {
@@ -38,7 +38,7 @@ pub(crate) enum ElementContainment {
     NotFound,
 }
 
-impl<V: Eq + Debug, C: IntoIterator<Item=V>> SequenceComparison<V, C> {
+impl<V: Eq + Debug> SequenceComparison<V> {
     fn is_equal(&self) -> bool {
         self.exclusive_left.is_empty() && self.exclusive_right.is_empty()
     }
