@@ -13,6 +13,8 @@ but this is a totally different project from Java Truth.
 
 This is not an official Google product, it is just code that happens to be owned by Google.
 
+⚠ The API is not fully stable and may be changed until version 1.0.
+
 Example
 -------
 
