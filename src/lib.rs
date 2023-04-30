@@ -64,5 +64,6 @@ mod assertions;
 mod base;
 mod diff;
 
+/// Module for testing the assertor library itself. Expected to be used by library developers.
 #[cfg(any(test, doc, feature = "testing"))]
 pub mod testing;

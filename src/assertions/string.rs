@@ -43,7 +43,7 @@ pub trait StringAssertion<R> {
     fn ends_with<E: Into<String>>(&self, expected: E) -> R;
 }
 
-impl<'s, R> StringAssertion<R> for Subject<'_, String, (), R>
+impl<R> StringAssertion<R> for Subject<'_, String, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
@@ -101,7 +101,7 @@ where
     }
 }
 
-impl<'s, R> StringAssertion<R> for Subject<'_, &str, (), R>
+impl<R> StringAssertion<R> for Subject<'_, &str, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
