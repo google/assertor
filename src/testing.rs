@@ -16,10 +16,12 @@ pub use crate::assertions::testing::CheckThatResultAssertion;
 pub use crate::{assert_that, check_that, Fact};
 use crate::{AssertionResult, AssertionStrategy};
 
-/// *Only for library developers.* An assertion macro for asserting assertion result.
+/// *Only for library developers.* An assertion macro to get the result of assertion without
+/// throwing panic. Expected to be used for testing assertion library.
 ///
 /// # Example
-/// ```compile_fail // because of referring private module.
+///
+/// ```ignore
 /// use assertor::*;
 /// use assertor::testing::*;
 ///
@@ -46,6 +48,7 @@ macro_rules! check_that {
     };
 }
 
+/// Data structure that contains assertion result and messages.
 pub struct CheckThatResult(Result<(), AssertionResult>);
 
 impl AssertionStrategy<CheckThatResult> for AssertionResult {

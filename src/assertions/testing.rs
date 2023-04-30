@@ -19,11 +19,30 @@ use crate::assertions::iterator::IteratorAssertion;
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Fact, Subject};
 use crate::testing::CheckThatResult;
 
+/// Trait for assertions for assertion messages.
+///
+/// # Example
+///
+/// ```ignore
+/// use assertor::*;
+/// use assertor::testing::*;
+///
+/// assert_that!(check_that!("actual_string").is_same_string_to("expected_string")).facts_are(vec![
+///     Fact::new("expected", "expected_string"),
+///     Fact::new("actual", "actual_string"),
+/// ]);
+/// ```
 pub trait CheckThatResultAssertion<'a, R> {
+    /// Checks that the assertion result contains elements of `facts` in order.
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R;
+
+    /// Checks that the assertion result contains elements of `facts` in order.
     fn facts_are_at_least<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R;
-    // Returns subject of fact value for the first matched key.
+
+    /// Returns the first fact value whose key is equal to `key`.
     fn fact_value_for_key<I: Into<String>>(&self, key: I) -> Subject<String, (), R>;
+
+    /// Returns keys of the assertion messages.
     fn fact_keys(&self) -> Subject<'a, HashSet<&String>, (), R>;
 }
 
