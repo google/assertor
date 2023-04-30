@@ -5,15 +5,16 @@ description = "Fluent assertion library with readable failure messages."
 license = "Apache-2.0"
 repository = "https://github.com/google/assertor"
 readme = "README.md"
-edition = "2018"
+edition = "2021"
+rust-version = "1.67.0"
 
-keywords = ["assert", "testing"]
+keywords = ["assert", "assertions", "testing", "unit"]
 categories = ["development-tools::testing", "development-tools::debugging"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-num-traits = { version = "0.2.14", optional = true }
+num-traits = { version = "0.2.15", optional = true }
 
 [features]
 default = ["float"]
