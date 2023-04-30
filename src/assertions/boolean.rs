@@ -31,7 +31,7 @@ pub trait BooleanAssertion<R> {
     fn is_false(&self) -> R;
 }
 
-impl<'s, R> BooleanAssertion<R> for Subject<'_, bool, (), R>
+impl<R> BooleanAssertion<R> for Subject<'_, bool, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
@@ -60,7 +60,6 @@ where
 
 #[cfg(test)]
 mod tests {
-
     use crate::testing::*;
 
     use super::*;

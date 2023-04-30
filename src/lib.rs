@@ -63,5 +63,6 @@ pub use base::{AssertionResult, AssertionStrategy, Fact, Location, Subject};
 mod assertions;
 mod base;
 
+/// Module for testing the assertor library itself. Expected to be used by library developers.
 #[cfg(any(test, doc, feature = "testing"))]
 pub mod testing;
