@@ -32,6 +32,7 @@
 //!
 //! assert_that!(Option::Some("Foo")).has_value("Foo");
 //! ```
+//!
 //! ## Failure cases
 //! ```should_panic
 //! use assertor::*;
