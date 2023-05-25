@@ -181,17 +181,6 @@ where
         K: Eq + Hash + Debug,
         V: Eq + Debug,
     {
-        fn pluralize(input: &str, count: usize, single: &str, plural: &str) -> String {
-            format!(
-                input,
-                count,
-                if diff.exclusive_right.len() == 1 {
-                    single
-                } else {
-                    plural
-                }
-            )
-        }
         let expected_map = expected.borrow();
         let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
         if diff.common.len() == expected_map.len() {
