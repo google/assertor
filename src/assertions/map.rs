@@ -67,6 +67,7 @@ where
         K: Eq + Hash + Debug,
         V: Eq + Debug;
 
+    /// Checks that the subject contains all entries from `expected`.
     fn contains_all<BM>(&self, expected: BM) -> R
     where
         BM: Borrow<HashMap<K, V>>,
