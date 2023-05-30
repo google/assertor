@@ -68,7 +68,7 @@ where
         V: Eq + Debug;
 
     /// Checks that the subject contains all entries from `expected`.
-    fn contains_all<BM>(&self, expected: BM) -> R
+    fn contains_at_least<BM>(&self, expected: BM) -> R
     where
         BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
@@ -176,12 +176,19 @@ where
         }
     }
 
-    fn contains_all<BM>(&self, expected: BM) -> R
+    fn contains_at_least<BM>(&self, expected: BM) -> R
     where
         BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
         V: Eq + Debug,
     {
+        fn pluralize<'a>(count: usize, single: &'a str, plural: &'a str) -> &'a str {
+            if count == 1 {
+                single
+            } else {
+                plural
+            }
+        }
         let expected_map = expected.borrow();
         let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
         if diff.common.len() == expected_map.len() {
@@ -191,15 +198,15 @@ where
         if !diff.exclusive_right.is_empty() {
             result = result
                 .add_fact(
-                    "expected to contain all entries",
+                    format!(
+                        "expected to contain at least {} provided {}",
+                        expected_map.len(),
+                        pluralize(expected_map.len(), "entry", "entries")
+                    ),
                     format!(
                         "but {} {} not found",
                         diff.exclusive_right.len(),
-                        if diff.exclusive_right.len() == 1 {
-                            "entry"
-                        } else {
-                            "entries"
-                        }
+                        pluralize(diff.exclusive_right.len(), "entry", "entries")
                     ),
                 )
                 .add_splitter();
@@ -218,11 +225,11 @@ where
                     format!(
                         "but found {} {} different",
                         diff.different_values.len(),
-                        if diff.different_values.len() == 1 {
-                            "entry that is"
-                        } else {
+                        pluralize(
+                            diff.different_values.len(),
+                            "entry that is",
                             "entries that are"
-                        }
+                        )
                     ),
                 )
                 .add_splitter();
@@ -383,24 +390,27 @@ mod tests {
     }
 
     #[test]
-    fn contains_all() {
+    fn contains_at_least() {
         let mut map_abc: HashMap<&str, &str> = HashMap::new();
         map_abc.insert("a", "1");
         map_abc.insert("b", "2");
         map_abc.insert("c", "3");
-        assert_that!(map_abc).contains_all(HashMap::from([("a", "1")]));
-        assert_that!(map_abc).contains_all(HashMap::from([("a", "1"), ("b", "2")]));
+        assert_that!(map_abc).contains_at_least(HashMap::from([("a", "1")]));
+        assert_that!(map_abc).contains_at_least(HashMap::from([("a", "1"), ("b", "2")]));
 
         // case 1: missing key
-        let result = check_that!(map_abc).contains_all(HashMap::from([("not exist", "1")]));
+        let result = check_that!(map_abc).contains_at_least(HashMap::from([("not exist", "1")]));
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new("expected to contain all entries", "but 1 entry not found"),
+            Fact::new(
+                "expected to contain at least 1 provided entry",
+                "but 1 entry not found",
+            ),
             Fact::new_splitter(),
             Fact::new("entry was not found", r#""not exist" -> "1""#),
         ]);
 
         // case 2: mismatched entries
-        let result = check_that!(map_abc).contains_all(HashMap::from([("c", "5")]));
+        let result = check_that!(map_abc).contains_at_least(HashMap::from([("c", "5")]));
         assert_that!(result).facts_are_at_least(vec![
             Fact::new(
                 "expected to contain the same entries",
@@ -415,9 +425,12 @@ mod tests {
 
         // case 3: both mismatched and absent key
         let result =
-            check_that!(map_abc).contains_all(HashMap::from([("not exist", "1"), ("c", "5")]));
+            check_that!(map_abc).contains_at_least(HashMap::from([("not exist", "1"), ("c", "5")]));
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new("expected to contain all entries", "but 1 entry not found"),
+            Fact::new(
+                "expected to contain at least 2 provided entries",
+                "but 1 entry not found",
+            ),
             Fact::new_splitter(),
             Fact::new("entry was not found", r#""not exist" -> "1""#),
             Fact::new_splitter(),
