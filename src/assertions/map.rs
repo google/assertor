@@ -601,8 +601,8 @@ mod tests {
         assert_that!(result).facts_are_at_least(vec![
             Fact::new_simple_fact("found 2 unexpected entries"),
             Fact::new_splitter(),
-            Fact::new_simple_fact(r#""a" -> "1""#),
-            Fact::new_simple_fact(r#""c" -> "3""#),
         ]);
+        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""c" -> "3""#)]);
+        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""a" -> "1""#)]);
     }
 }

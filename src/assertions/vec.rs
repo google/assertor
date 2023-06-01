@@ -15,7 +15,9 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::assertions::iterator::{check_has_length, check_is_empty, IteratorAssertion};
+use crate::assertions::iterator::{
+    check_has_length, check_is_empty, check_is_not_empty, IteratorAssertion,
+};
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 /// Trait for vector assertion.
@@ -131,6 +133,17 @@ where
     where
         T: Debug;
 
+    /// Checks that the subject is not empty.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1]).is_not_empty();
+    /// ```
+    fn is_not_empty(&self) -> R
+    where
+        T: Debug;
+
     /// Checks that the subject is the given length.
     ///
     /// # Example
@@ -194,6 +207,13 @@ where
         check_is_empty(self.new_result(), self.actual().iter())
     }
 
+    fn is_not_empty(&self) -> R
+    where
+        T: Debug,
+    {
+        check_is_not_empty(self.new_result(), self.actual().iter())
+    }
+
     fn has_length(&self, length: usize) -> R {
         check_has_length(self.new_result(), self.actual().iter(), self.expr(), length)
     }
@@ -245,6 +265,18 @@ mod tests {
             Fact::new_simple_fact("expected to be empty"),
             Fact::new_splitter(),
             Fact::new("actual", "[1]"),
+        ])
+    }
+
+    #[test]
+    fn is_not_empty() {
+        assert_that!(Vec::<usize>::from([1])).is_not_empty();
+
+        // Failures
+        assert_that!(check_that!(Vec::<usize>::new()).is_not_empty()).facts_are(vec![
+            Fact::new_simple_fact("expected to be non-empty"),
+            Fact::new_splitter(),
+            Fact::new("actual", "[]"),
         ])
     }
 

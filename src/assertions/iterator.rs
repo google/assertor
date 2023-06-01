@@ -227,7 +227,7 @@ where
     /// assert_that!(Vec::<usize>::new()).is_not_empty();
     /// // expected to be non-empty
     /// // ---
-    /// // actual: [1]
+    /// // actual: []
     /// ```
     fn is_not_empty(&self) -> R
     where
