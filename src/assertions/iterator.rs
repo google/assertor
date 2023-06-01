@@ -214,6 +214,25 @@ where
     where
         T: Debug;
 
+    /// Checks that the subject is not empty.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// assert_that!(vec![1]).is_not_empty();
+    /// assert_that!("abc".chars()).is_not_empty();
+    /// ```
+    /// ```should_panic
+    /// use assertor::*;
+    /// assert_that!(Vec::<usize>::new()).is_not_empty();
+    /// // expected to be non-empty
+    /// // ---
+    /// // actual: [1]
+    /// ```
+    fn is_not_empty(&self) -> R
+    where
+        T: Debug;
+
     /// Checks that the subject has the given length.
     ///
     /// # Example
@@ -415,6 +434,13 @@ where
         check_is_empty(self.new_result(), self.actual().clone())
     }
 
+    fn is_not_empty(&self) -> R
+    where
+        T: Debug,
+    {
+        check_is_not_empty(self.new_result(), self.actual().clone())
+    }
+
     fn has_length(&self, length: usize) -> R
     where
         T: Debug,
@@ -442,6 +468,23 @@ where
             .add_splitter()
             .add_fact("actual", format!("{:?}", actual_iter.collect::<Vec<_>>()))
             .do_fail()
+    }
+}
+
+pub(crate) fn check_is_not_empty<I, T, R>(assertion_result: AssertionResult, actual_iter: I) -> R
+where
+    AssertionResult: AssertionStrategy<R>,
+    I: Iterator<Item = T> + Clone,
+    T: Debug,
+{
+    if actual_iter.clone().next().is_none() {
+        assertion_result
+            .add_simple_fact("expected to be non-empty")
+            .add_splitter()
+            .add_fact("actual", format!("{:?}", actual_iter.collect::<Vec<_>>()))
+            .do_fail()
+    } else {
+        assertion_result.do_ok()
     }
 }
 
