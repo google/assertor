@@ -19,7 +19,9 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use crate::assertions::basic::EqualityAssertion;
-use crate::assertions::iterator::check_is_empty;
+use crate::assertions::iterator::{
+    check_contains, check_does_not_contain, check_is_empty, check_is_not_empty,
+};
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 use crate::diff::{MapComparison, MapValueDiff};
 
@@ -53,8 +55,19 @@ where
     where
         K: Debug;
 
+    /// Checks that the subject is not empty.
+    fn is_not_empty(&self) -> R
+    where
+        K: Debug;
+
     /// Checks that the subject has the given `key`.
     fn contains_key<BK>(&self, key: BK) -> R
+    where
+        BK: Borrow<K>,
+        K: Eq + Hash + Debug;
+
+    /// Checks that the subject does not have the given `key`.
+    fn does_not_contain_key<BK>(&self, key: BK) -> R
     where
         BK: Borrow<K>,
         K: Eq + Hash + Debug;
@@ -67,8 +80,23 @@ where
         K: Eq + Hash + Debug,
         V: Eq + Debug;
 
+    /// Checks that the subject does not contain entry with the given `key` and `value`.
+    fn does_not_contain_entry<BK, BV>(&self, key: BK, value: BV) -> R
+    where
+        BK: Borrow<K>,
+        BV: Borrow<V>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug;
+
     /// Checks that the subject contains all entries from `expected`.
     fn contains_at_least<BM>(&self, expected: BM) -> R
+    where
+        BM: Borrow<HashMap<K, V>>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug;
+
+    /// Checks that the subject does not contain any entries from `expected`.
+    fn does_not_contain_any<BM>(&self, expected: BM) -> R
     where
         BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
@@ -114,24 +142,27 @@ where
         check_is_empty(self.new_result(), self.actual().keys())
     }
 
+    fn is_not_empty(&self) -> R
+    where
+        K: Debug,
+    {
+        check_is_not_empty(self.new_result(), self.actual().keys())
+    }
+
     fn contains_key<BK>(&self, key: BK) -> R
     where
         BK: Borrow<K>,
         K: Eq + Hash + Debug,
     {
-        if self.actual().contains_key(key.borrow()) {
-            self.new_result().do_ok()
-        } else {
-            self.new_result()
-                .add_fact("expected to contain key", format!("{:?}", key.borrow()))
-                .add_simple_fact("but did not")
-                .add_splitter()
-                .add_fact(
-                    "though it did contain keys",
-                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
-                )
-                .do_fail()
-        }
+        check_contains(self.new_result(), self.actual().keys(), &key.borrow())
+    }
+
+    fn does_not_contain_key<BK>(&self, key: BK) -> R
+    where
+        BK: Borrow<K>,
+        K: Eq + Hash + Debug,
+    {
+        check_does_not_contain(self.new_result(), self.actual().keys(), &key.borrow())
     }
 
     fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
@@ -173,6 +204,33 @@ where
                     format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
                 )
                 .do_fail()
+        }
+    }
+
+    fn does_not_contain_entry<BK, BV>(&self, key: BK, value: BV) -> R
+    where
+        BK: Borrow<K>,
+        BV: Borrow<V>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug,
+    {
+        let actual_value = self.actual().get(key.borrow());
+        if Some(value.borrow()) == actual_value {
+            self.new_result()
+                .add_fact(
+                    "expected to not contain entry",
+                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                )
+                .add_simple_fact("but entry was found")
+                .add_splitter()
+                // TODO: add better representation of the map
+                .add_fact(
+                    "though it did contain",
+                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                )
+                .do_fail()
+        } else {
+            self.new_result().do_ok()
         }
     }
 
@@ -251,6 +309,27 @@ where
         return result.do_fail();
     }
 
+    fn does_not_contain_any<BM>(&self, expected: BM) -> R
+    where
+        BM: Borrow<HashMap<K, V>>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug,
+    {
+        let expected_map = expected.borrow();
+        let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
+        if !diff.common.is_empty() {
+            let mut result = self
+                .new_result()
+                .add_simple_fact(format!("found {} unexpected entries", diff.common.len()))
+                .add_splitter();
+            for (key, value) in diff.common {
+                result = result.add_simple_fact(format!("{:?} -> {:?}", key, value));
+            }
+            return result.do_fail();
+        }
+        return self.new_result().do_ok();
+    }
+
     fn key_set(&self) -> Subject<Keys<K, V>, (), R> {
         self.new_owned_subject(
             self.actual().keys(),
@@ -290,16 +369,25 @@ mod tests {
         let map_empty: HashMap<&str, &str> = HashMap::new();
         assert_that!(map_empty).is_empty();
 
-        let mut map_with_two_entry = HashMap::new();
-        map_with_two_entry.insert("1", "y");
-        map_with_two_entry.insert("2", "z");
-        assert_that!(map_with_two_entry).has_length(2);
+        // failures
+        assert_that!(check_that!(HashMap::from([("a", "b")])).is_empty()).facts_are(vec![
+            Fact::new_simple_fact("expected to be empty"),
+            Fact::new_splitter(),
+            Fact::new("actual", "[\"a\"]"),
+        ])
+    }
+
+    #[test]
+    fn is_not_empty() {
+        let non_empty: HashMap<&str, &str> = HashMap::from([("a", "b")]);
+        assert_that!(non_empty).is_not_empty();
 
         // failures
-        assert_that!(check_that!(map_empty).has_length(1)).facts_are(vec![
-            Fact::new("value of", "map_empty.len()"),
-            Fact::new("expected", "1"),
-            Fact::new("actual", "0"),
+        let empty_map: HashMap<&str, &str> = HashMap::new();
+        assert_that!(check_that!(empty_map).is_not_empty()).facts_are(vec![
+            Fact::new_simple_fact("expected to be non-empty"),
+            Fact::new_splitter(),
+            Fact::new("actual", "[]"),
         ])
     }
 
@@ -316,13 +404,33 @@ mod tests {
         // failures
         let result = check_that!(map_abc).contains_key("not exist");
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new("expected to contain key", r#""not exist""#),
+            Fact::new("expected to contain", r#""not exist""#),
             Fact::new_simple_fact("but did not"),
-            Fact::new_splitter(),
         ]);
         assert_that!(result)
             .fact_keys()
-            .contains(&"though it did contain keys".to_string());
+            .contains(&"though it did contain".to_string());
+        // Skip test for value because key order is not stable.
+    }
+
+    #[test]
+    fn does_not_contain_key() {
+        let mut map_abc: HashMap<&str, &str> = HashMap::new();
+        map_abc.insert("a", "1");
+        map_abc.insert("b", "2");
+        map_abc.insert("c", "3");
+        assert_that!(map_abc).does_not_contain_key("x");
+        assert_that!(map_abc).does_not_contain_key("y");
+
+        // failures
+        let result = check_that!(map_abc).does_not_contain_key("a");
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new("expected to not contain", r#""a""#),
+            Fact::new_simple_fact("but element was found"),
+        ]);
+        assert_that!(result)
+            .fact_keys()
+            .contains(&"though it did contain".to_string());
         // Skip test for value because key order is not stable.
     }
 
@@ -390,6 +498,32 @@ mod tests {
     }
 
     #[test]
+    fn does_not_contain_entry() {
+        let mut map_abc: HashMap<&str, &str> = HashMap::new();
+        map_abc.insert("a", "1");
+        map_abc.insert("b", "2");
+        map_abc.insert("c", "3");
+
+        // different key
+        assert_that!(map_abc).does_not_contain_entry("x", "1");
+        // different value
+        assert_that!(map_abc).does_not_contain_entry("a", "2");
+        assert_that!(map_abc).does_not_contain_entry("b", "3");
+        assert_that!(map_abc).does_not_contain_entry("c", "4");
+
+        // failure
+        let result = check_that!(map_abc).does_not_contain_entry("a", "1");
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new("expected to not contain entry", "\"a\" -> \"1\""),
+            Fact::new_simple_fact("but entry was found"),
+            Fact::new_splitter(),
+        ]);
+        assert_that!(result)
+            .fact_keys()
+            .contains(&"though it did contain".to_string());
+    }
+
+    #[test]
     fn contains_at_least() {
         let mut map_abc: HashMap<&str, &str> = HashMap::new();
         map_abc.insert("a", "1");
@@ -444,5 +578,31 @@ mod tests {
                 r#"expected value "5", but found "3""#,
             ),
         ]);
+    }
+
+    #[test]
+    fn does_not_contain_any() {
+        let mut map_abc: HashMap<&str, &str> = HashMap::new();
+        map_abc.insert("a", "1");
+        map_abc.insert("b", "2");
+        map_abc.insert("c", "3");
+
+        assert_that!(map_abc).does_not_contain_any(HashMap::from([
+            ("a", "2"),
+            ("b", "3"),
+            ("x", "1"),
+        ]));
+
+        let result = check_that!(map_abc).does_not_contain_any(HashMap::from([
+            ("a", "1"),
+            ("c", "3"),
+            ("x", "g"),
+        ]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new_simple_fact("found 2 unexpected entries"),
+            Fact::new_splitter(),
+        ]);
+        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""c" -> "3""#)]);
+        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""a" -> "1""#)]);
     }
 }
