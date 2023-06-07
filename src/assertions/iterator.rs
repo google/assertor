@@ -282,15 +282,15 @@ where
         let comparison = SequenceComparison::from_iter(
             self.actual().clone(),
             expected_iter.clone(),
-            SequenceOrderComparison::Exact,
+            SequenceOrderComparison::Strict,
         );
         if comparison.are_same() {
             self.new_result().do_ok()
         } else {
             feed_facts_about_item_diff(
                 self.new_result(),
-                comparison.exclusive_right,
-                comparison.exclusive_left,
+                comparison.missing,
+                comparison.extra,
                 self.actual().clone(),
                 expected_iter,
             )
@@ -305,7 +305,7 @@ where
         let comparison = SequenceComparison::from_iter(
             self.actual().clone(),
             expected_iter.clone(),
-            SequenceOrderComparison::Exact,
+            SequenceOrderComparison::Strict,
         );
         if comparison.are_equal() {
             self.new_result().do_ok()
@@ -325,8 +325,8 @@ where
         } else {
             feed_facts_about_item_diff(
                 self.new_result(),
-                comparison.exclusive_right,
-                comparison.exclusive_left,
+                comparison.missing,
+                comparison.extra,
                 self.actual().clone(),
                 expected_iter,
             )
@@ -346,7 +346,7 @@ where
         if comparison.contains_all() {
             self.new_result().do_ok()
         } else {
-            let missing = comparison.exclusive_right;
+            let missing = comparison.missing;
             self.new_result()
                 .add_fact(
                     format!("missing ({})", missing.len()),
@@ -428,7 +428,7 @@ where
                 )
                 .do_fail()
         } else {
-            let missing = comparison.exclusive_right;
+            let missing = comparison.missing;
             self.new_result()
                 .add_fact(
                     format!("missing ({})", missing.len()),

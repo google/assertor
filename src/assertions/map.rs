@@ -253,7 +253,7 @@ where
             return self.new_result().do_ok();
         }
         let mut result = self.new_result();
-        if !diff.exclusive_right.is_empty() {
+        if !diff.missing.is_empty() {
             result = result
                 .add_fact(
                     format!(
@@ -263,12 +263,12 @@ where
                     ),
                     format!(
                         "but {} {} not found",
-                        diff.exclusive_right.len(),
-                        pluralize(diff.exclusive_right.len(), "entry", "entries")
+                        diff.missing.len(),
+                        pluralize(diff.missing.len(), "entry", "entries")
                     ),
                 )
                 .add_splitter();
-            for (key, value) in diff.exclusive_right {
+            for (key, value) in diff.missing {
                 result =
                     result.add_fact("entry was not found", format!("{:?} -> {:?}", key, value));
             }

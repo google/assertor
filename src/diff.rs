@@ -12,8 +12,8 @@ pub(crate) mod map {
 
     /// Disjoint representation and commonalities between two Map-like data structures.
     pub(crate) struct MapComparison<K: Eq + Hash + Debug, V: PartialEq + Debug> {
-        pub(crate) exclusive_left: Vec<(K, V)>,
-        pub(crate) exclusive_right: Vec<(K, V)>,
+        pub(crate) extra: Vec<(K, V)>,
+        pub(crate) missing: Vec<(K, V)>,
         pub(crate) different_values: Vec<MapValueDiff<K, V>>,
         pub(crate) common: Vec<(K, V)>,
     }
@@ -24,8 +24,8 @@ pub(crate) mod map {
             left: &'a HashMap<K, V>,
             right: &'a HashMap<K, V>,
         ) -> MapComparison<&'a K, &'a V> {
-            let mut exclusive_left = vec![];
-            let mut exclusive_right = vec![];
+            let mut extra = vec![];
+            let mut missing = vec![];
             let mut different_values = vec![];
             let mut common = vec![];
 
@@ -40,20 +40,20 @@ pub(crate) mod map {
                         right_value: rv,
                     }),
                     None => {
-                        exclusive_left.push((key, value));
+                        extra.push((key, value));
                     }
                 }
             }
 
             for (key, value) in right {
                 if !left.contains_key(key) {
-                    exclusive_right.push((key, value));
+                    missing.push((key, value));
                 }
             }
 
             MapComparison {
-                exclusive_left,
-                exclusive_right,
+                extra,
+                missing,
                 different_values,
                 common,
             }
@@ -72,28 +72,28 @@ pub(crate) mod map {
             let right: HashMap<&str, i32> = HashMap::from([]);
             let result = MapComparison::from_hash_maps(&left, &right);
             assert!(result.common.is_empty());
-            assert!(result.exclusive_left.is_empty());
-            assert!(result.exclusive_right.is_empty());
+            assert!(result.extra.is_empty());
+            assert!(result.missing.is_empty());
         }
 
         #[test]
-        fn map_diff_left_exclusive() {
+        fn map_diff_extras() {
             let left: HashMap<&str, i32> = HashMap::from([("123", 2)]);
             let right: HashMap<&str, i32> = HashMap::from([]);
             let result = MapComparison::from_hash_maps(&left, &right);
             assert!(result.common.is_empty());
-            assert_eq!(result.exclusive_left, vec![(&"123", &2)]);
-            assert!(result.exclusive_right.is_empty());
+            assert_eq!(result.extra, vec![(&"123", &2)]);
+            assert!(result.missing.is_empty());
         }
 
         #[test]
-        fn map_diff_right_exclusive() {
+        fn map_diff_missing() {
             let left: HashMap<&str, i32> = HashMap::from([]);
             let right: HashMap<&str, i32> = HashMap::from([("123", 2)]);
             let result = MapComparison::from_hash_maps(&left, &right);
             assert!(result.common.is_empty());
-            assert!(result.exclusive_left.is_empty());
-            assert_eq!(result.exclusive_right, vec![(&"123", &2)]);
+            assert!(result.extra.is_empty());
+            assert_eq!(result.missing, vec![(&"123", &2)]);
         }
 
         #[test]
@@ -102,8 +102,8 @@ pub(crate) mod map {
             let right: HashMap<&str, i32> = HashMap::from([("123", 2)]);
             let result = MapComparison::from_hash_maps(&left, &right);
             assert_eq!(result.common, vec![(&"123", &2)]);
-            assert!(result.exclusive_left.is_empty());
-            assert!(result.exclusive_right.is_empty());
+            assert!(result.extra.is_empty());
+            assert!(result.missing.is_empty());
         }
     }
 }
@@ -114,22 +114,22 @@ pub(crate) mod iter {
     /// Differences between two Sequence-like structures.
     pub(crate) struct SequenceComparison<T: PartialEq + Debug> {
         pub(crate) order_preserved: bool,
-        pub(crate) exclusive_left: Vec<T>,
-        pub(crate) exclusive_right: Vec<T>,
+        pub(crate) extra: Vec<T>,
+        pub(crate) missing: Vec<T>,
     }
 
     pub(crate) enum SequenceOrderComparison {
         Relative,
-        Exact,
+        Strict,
     }
 
     impl<T: PartialEq + Debug> SequenceComparison<T> {
         pub(crate) fn are_same(&self) -> bool {
-            self.exclusive_left.is_empty() && self.exclusive_right.is_empty()
+            self.extra.is_empty() && self.missing.is_empty()
         }
 
         pub(crate) fn contains_all(&self) -> bool {
-            self.exclusive_right.is_empty()
+            self.missing.is_empty()
         }
 
         pub(crate) fn are_equal(&self) -> bool {
@@ -145,7 +145,7 @@ pub(crate) mod iter {
             sequence_order: SequenceOrderComparison,
         ) -> SequenceComparison<T> {
             match sequence_order {
-                SequenceOrderComparison::Exact => {
+                SequenceOrderComparison::Strict => {
                     Self::strict_order_comparison(left.clone(), right.clone())
                 }
                 SequenceOrderComparison::Relative => {
@@ -192,8 +192,8 @@ pub(crate) mod iter {
             }
             SequenceComparison {
                 order_preserved,
-                exclusive_left: extra,
-                exclusive_right: missing,
+                extra,
+                missing,
             }
         }
 
@@ -204,17 +204,22 @@ pub(crate) mod iter {
             mut actual_iter: ICL,
             mut expected_iter: ICR,
         ) -> SequenceComparison<T> {
-            let mut actual_value = actual_iter.next();
-            let mut expected_value = expected_iter.next();
             let mut missing: Vec<T> = vec![];
             let mut extra: Vec<T> = vec![];
+            let mut actual_value = actual_iter.next();
+            let mut expected_value = expected_iter.next();
             loop {
                 if expected_value.is_none() {
+                    if let Some(actual) = actual_value {
+                        extra.push(actual);
+                    }
                     extra.extend(actual_iter);
                     break;
                 }
                 if actual_value.is_none() {
-                    missing.push(expected_value.unwrap());
+                    if let Some(expected) = expected_value {
+                        missing.push(expected);
+                    }
                     missing.extend(expected_iter);
                     break;
                 }
@@ -239,14 +244,23 @@ pub(crate) mod iter {
 
             SequenceComparison {
                 order_preserved,
-                exclusive_left: extra,
-                exclusive_right: missing,
+                extra,
+                missing,
             }
         }
     }
 
+    // TODO: add quickcheck and parameterized (test_case / rstest) tests; for now covered with public API tests
     #[cfg(test)]
     mod tests {
-        // TODO: add quickcheck and parameterized (test_case / rstest) tests; for now covered with public API tests
+        use super::SequenceComparison;
+
+        #[test]
+        fn relative_order_comparison() {
+            let left = vec![1, 2];
+            let right: Vec<i32> = vec![];
+            let result = SequenceComparison::relative_order_comparison(left.iter(), right.iter());
+            assert_eq!(vec![&1, &2], result.extra);
+        }
     }
 }
