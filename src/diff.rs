@@ -250,7 +250,7 @@ pub(crate) mod iter {
         }
     }
 
-    // TODO: add quickcheck and parameterized (test_case / rstest) tests; for now covered with public API tests
+    // TODO: add quickcheck and/or parameterized (test_case / rstest) tests; for now covered with public API tests
     #[cfg(test)]
     mod tests {
         use super::SequenceComparison;
