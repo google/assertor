@@ -16,6 +16,7 @@ use std::borrow::Borrow;
 use std::fmt::Debug;
 
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
+use crate::diff::iter::{SequenceComparison, SequenceOrderComparison};
 
 /// Trait for iterator assertion.
 ///
@@ -278,16 +279,22 @@ where
     where
         T: PartialEq + Debug,
     {
-        match check_contains_exactly(self.actual().clone(), expected_iter.clone()) {
-            ContainsExactlyResult::Same { .. } => self.new_result().do_ok(),
-            ContainsExactlyResult::Different { missing, extra } => feed_facts_about_item_diff(
+        let comparison = SequenceComparison::from_iter(
+            self.actual().clone(),
+            expected_iter.clone(),
+            SequenceOrderComparison::Exact,
+        );
+        if comparison.are_same() {
+            self.new_result().do_ok()
+        } else {
+            feed_facts_about_item_diff(
                 self.new_result(),
-                missing,
-                extra,
+                comparison.exclusive_right,
+                comparison.exclusive_left,
                 self.actual().clone(),
                 expected_iter,
             )
-            .do_fail(),
+            .do_fail()
         }
     }
 
@@ -295,14 +302,15 @@ where
     where
         T: PartialEq + Debug,
     {
-        match check_contains_exactly(self.actual().clone(), expected_iter.clone()) {
-            ContainsExactlyResult::Same {
-                is_same_order: true,
-            } => self.new_result().do_ok(),
-            ContainsExactlyResult::Same {
-                is_same_order: false,
-            } => self
-                .new_result()
+        let comparison = SequenceComparison::from_iter(
+            self.actual().clone(),
+            expected_iter.clone(),
+            SequenceOrderComparison::Exact,
+        );
+        if comparison.are_equal() {
+            self.new_result().do_ok()
+        } else if comparison.are_same() && !comparison.order_preserved {
+            self.new_result()
                 .add_simple_fact("contents match, but order was wrong")
                 .add_splitter()
                 .add_fact(
@@ -313,15 +321,16 @@ where
                     "actual",
                     format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
                 )
-                .do_fail(),
-            ContainsExactlyResult::Different { missing, extra } => feed_facts_about_item_diff(
+                .do_fail()
+        } else {
+            feed_facts_about_item_diff(
                 self.new_result(),
-                missing,
-                extra,
+                comparison.exclusive_right,
+                comparison.exclusive_left,
                 self.actual().clone(),
                 expected_iter,
             )
-            .do_fail(),
+            .do_fail()
         }
     }
 
@@ -329,10 +338,16 @@ where
     where
         T: PartialEq + Debug,
     {
-        match check_contains_at_least(self.actual().clone(), expected_iter.clone()) {
-            ContainsAtLeastResult::Yes { .. } => self.new_result().do_ok(),
-            ContainsAtLeastResult::No { missing } => self
-                .new_result()
+        let comparison = SequenceComparison::from_iter(
+            self.actual().clone(),
+            expected_iter.clone(),
+            SequenceOrderComparison::Relative,
+        );
+        if comparison.contains_all() {
+            self.new_result().do_ok()
+        } else {
+            let missing = comparison.exclusive_right;
+            self.new_result()
                 .add_fact(
                     format!("missing ({})", missing.len()),
                     format!("{:?}", missing),
@@ -348,7 +363,7 @@ where
                     "but was",
                     format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
                 )
-                .do_fail(),
+                .do_fail()
         }
     }
 
@@ -358,6 +373,7 @@ where
     {
         let els = elements.clone().collect::<Vec<T>>();
         // set-like intersection satisfies containment requirement for this case
+        // TODO: move to sequence comparison API instead of in-place computation
         let intersection: Vec<T> = self
             .actual()
             .clone()
@@ -392,10 +408,15 @@ where
     where
         T: PartialEq + Debug,
     {
-        match check_contains_at_least(self.actual().clone(), expected_iter.clone()) {
-            ContainsAtLeastResult::Yes { is_in_order } if is_in_order => self.new_result().do_ok(),
-            ContainsAtLeastResult::Yes { .. } => self
-                .new_result()
+        let comparison = SequenceComparison::from_iter(
+            self.actual().clone(),
+            expected_iter.clone(),
+            SequenceOrderComparison::Relative,
+        );
+        if comparison.contains_all() && comparison.order_preserved {
+            self.new_result().do_ok()
+        } else if comparison.contains_all() {
+            self.new_result()
                 .add_simple_fact("required elements were all found, but order was wrong")
                 .add_fact(
                     "expected order for required elements",
@@ -405,9 +426,10 @@ where
                     "but was",
                     format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
                 )
-                .do_fail(),
-            ContainsAtLeastResult::No { missing } => self
-                .new_result()
+                .do_fail()
+        } else {
+            let missing = comparison.exclusive_right;
+            self.new_result()
                 .add_fact(
                     format!("missing ({})", missing.len()),
                     format!("{:?}", missing),
@@ -423,7 +445,7 @@ where
                     "but was",
                     format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
                 )
-                .do_fail(),
+                .do_fail()
         }
     }
 
@@ -538,120 +560,6 @@ where
     }
 }
 
-// TODO: create a disjoint split with ordering for the cases below
-pub(crate) enum ContainsAtLeastResult<T> {
-    Yes { is_in_order: bool },
-    No { missing: Vec<T> },
-}
-
-pub(crate) fn check_contains_at_least<IA, IE, T>(
-    mut actual_iter: IA,
-    mut expected_iter: IE,
-) -> ContainsAtLeastResult<T>
-where
-    IA: Iterator<Item = T>,
-    IE: Iterator<Item = T>,
-    T: PartialEq,
-{
-    let mut actual_value = actual_iter.next();
-    let mut expected_value = expected_iter.next();
-    let mut missing = vec![];
-    let mut extra = vec![];
-    loop {
-        if expected_value.is_none() {
-            extra.extend(actual_iter);
-            break;
-        }
-        if actual_value.is_none() {
-            missing.push(expected_value.unwrap());
-            missing.extend(expected_iter);
-            break;
-        }
-        if actual_value.eq(&expected_value) {
-            actual_value = actual_iter.next();
-            expected_value = expected_iter.next();
-        } else {
-            extra.push(actual_value.unwrap());
-            actual_value = actual_iter.next();
-        }
-    }
-    let is_in_order = missing.is_empty();
-
-    // check out of order elements.
-    if !missing.is_empty() {
-        for extra_elem in extra.iter() {
-            if let Some(idx) = missing.iter().position(|m: &T| m.eq(extra_elem)) {
-                missing.remove(idx);
-            }
-        }
-    }
-
-    if missing.is_empty() {
-        ContainsAtLeastResult::Yes { is_in_order }
-    } else {
-        ContainsAtLeastResult::No { missing }
-    }
-}
-
-pub(crate) enum ContainsExactlyResult<T> {
-    Same { is_same_order: bool },
-    Different { missing: Vec<T>, extra: Vec<T> },
-}
-
-pub(crate) fn check_contains_exactly<IA, IE, T>(
-    mut actual_iter: IA,
-    mut expected_iter: IE,
-) -> ContainsExactlyResult<T>
-where
-    IA: Iterator<Item = T>,
-    IE: Iterator<Item = T>,
-    T: PartialEq,
-{
-    let mut extra = vec![];
-    let mut missing = vec![];
-    let mut is_same_order = true;
-    loop {
-        match (actual_iter.next(), expected_iter.next()) {
-            (Some(actual_elem), Some(expect_elem)) => {
-                if actual_elem.eq(&expect_elem) {
-                    continue;
-                }
-                is_same_order = false;
-                if let Some(idx) = extra.iter().position(|e: &T| e.eq(&expect_elem)) {
-                    extra.remove(idx);
-                } else {
-                    missing.push(expect_elem);
-                }
-                if let Some(idx) = missing.iter().position(|e: &T| e.eq(&actual_elem)) {
-                    missing.remove(idx);
-                } else {
-                    extra.push(actual_elem);
-                }
-            }
-            (None, Some(expect_elem)) => {
-                if let Some(idx) = extra.iter().position(|e: &T| e.eq(&expect_elem)) {
-                    extra.remove(idx);
-                } else {
-                    missing.push(expect_elem);
-                }
-            }
-            (Some(actual_elem), None) => {
-                if let Some(idx) = missing.iter().position(|e: &T| e.eq(&actual_elem)) {
-                    missing.remove(idx);
-                } else {
-                    extra.push(actual_elem);
-                }
-            }
-            (None, None) => break,
-        }
-    }
-    if extra.is_empty() && missing.is_empty() {
-        ContainsExactlyResult::Same { is_same_order }
-    } else {
-        ContainsExactlyResult::Different { missing, extra }
-    }
-}
-
 pub(crate) fn feed_facts_about_item_diff<
     T: Debug,
     A: Debug,
@@ -733,8 +641,8 @@ mod tests {
 
     #[test]
     fn contains_exactly() {
-        // assert_that!(vec![1, 2, 3].iter()).contains_exactly(vec![1, 2, 3].iter());
-        // assert_that!(vec![2, 1, 3].iter()).contains_exactly(vec![1, 2, 3].iter());
+        assert_that!(vec![1, 2, 3].iter()).contains_exactly(vec![1, 2, 3].iter());
+        assert_that!(vec![2, 1, 3].iter()).contains_exactly(vec![1, 2, 3].iter());
 
         assert_that!(check_that!("foobarbaz".chars()).contains_exactly("bazbar".chars()))
             .facts_are(vec![
@@ -804,6 +712,7 @@ mod tests {
         assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![].iter());
         assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![1, 2].iter());
         assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![2, 3].iter());
+        assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![1, 3].iter());
         assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![1, 2, 3].iter());
 
         // Failures

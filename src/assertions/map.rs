@@ -23,7 +23,7 @@ use crate::assertions::iterator::{
     check_contains, check_does_not_contain, check_is_empty, check_is_not_empty,
 };
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
-use crate::diff::{MapComparison, MapValueDiff};
+use crate::diff::map::{MapComparison, MapValueDiff};
 
 /// Trait for map assertion.
 ///
