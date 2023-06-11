@@ -65,45 +65,26 @@ pub(crate) mod map {
         use std::collections::HashMap;
 
         use crate::diff::map::MapComparison;
+        use test_case::test_case;
 
-        #[test]
-        fn diff_empty_maps() {
-            let left: HashMap<&str, i32> = HashMap::from([]);
-            let right: HashMap<&str, i32> = HashMap::from([]);
-            let result = MapComparison::from_hash_maps(&left, &right);
-            assert!(result.common.is_empty());
-            assert!(result.extra.is_empty());
-            assert!(result.missing.is_empty());
-        }
-
-        #[test]
-        fn map_diff_extras() {
-            let left: HashMap<&str, i32> = HashMap::from([("123", 2)]);
-            let right: HashMap<&str, i32> = HashMap::from([]);
-            let result = MapComparison::from_hash_maps(&left, &right);
-            assert!(result.common.is_empty());
-            assert_eq!(result.extra, vec![(&"123", &2)]);
-            assert!(result.missing.is_empty());
-        }
-
-        #[test]
-        fn map_diff_missing() {
-            let left: HashMap<&str, i32> = HashMap::from([]);
-            let right: HashMap<&str, i32> = HashMap::from([("123", 2)]);
-            let result = MapComparison::from_hash_maps(&left, &right);
-            assert!(result.common.is_empty());
-            assert!(result.extra.is_empty());
-            assert_eq!(result.missing, vec![(&"123", &2)]);
-        }
-
-        #[test]
-        fn map_diff_common() {
-            let left: HashMap<&str, i32> = HashMap::from([("123", 2)]);
-            let right: HashMap<&str, i32> = HashMap::from([("123", 2)]);
-            let result = MapComparison::from_hash_maps(&left, &right);
-            assert_eq!(result.common, vec![(&"123", &2)]);
-            assert!(result.extra.is_empty());
-            assert!(result.missing.is_empty());
+        //          left              right             extra               missing             common               name
+        #[test_case(vec![],           vec![],           vec![],             vec![],             vec![] ;             "empty maps")]
+        #[test_case(vec![("123", 2)], vec![],           vec![(&"123", &2)], vec![],             vec![] ;             "extra entry")]
+        #[test_case(vec![],           vec![("123", 2)], vec![],             vec![(&"123", &2)], vec![] ;             "missing entry")]
+        #[test_case(vec![("123", 2)], vec![("123", 2)], vec![],             vec![],             vec![(&"123", &2)] ; "common entry")]
+        fn map_diff(
+            left: Vec<(&str, i32)>,
+            right: Vec<(&str, i32)>,
+            extra: Vec<(&&str, &i32)>,
+            missing: Vec<(&&str, &i32)>,
+            common: Vec<(&&str, &i32)>,
+        ) {
+            let l: HashMap<&str, i32> = left.into_iter().collect();
+            let r: HashMap<&str, i32> = right.into_iter().collect();
+            let result = MapComparison::from_hash_maps(&l, &r);
+            assert_eq!(common, result.common);
+            assert_eq!(extra, result.extra);
+            assert_eq!(missing, result.missing);
         }
     }
 }
@@ -154,15 +135,12 @@ pub(crate) mod iter {
             }
         }
 
-        pub(self) fn strict_order_comparison<
-            ICL: Iterator<Item = T> + Clone,
-            ICR: Iterator<Item = T> + Clone,
-        >(
+        pub(self) fn strict_order_comparison<ICL: Iterator<Item = T>, ICR: Iterator<Item = T>>(
             mut actual_iter: ICL,
             mut expected_iter: ICR,
         ) -> SequenceComparison<T> {
-            let mut extra: Vec<T> = vec![];
-            let mut missing: Vec<T> = vec![];
+            let mut extra = vec![];
+            let mut missing = vec![];
             let mut order_preserved = true;
             let move_element = |el: T, source: &mut Vec<T>, target: &mut Vec<T>| {
                 if let Some(idx) = source.iter().position(|e: &T| e.eq(&el)) {
@@ -197,10 +175,7 @@ pub(crate) mod iter {
             }
         }
 
-        pub(self) fn relative_order_comparison<
-            ICL: Iterator<Item = T> + Clone,
-            ICR: Iterator<Item = T> + Clone,
-        >(
+        pub(self) fn relative_order_comparison<ICL: Iterator<Item = T>, ICR: Iterator<Item = T>>(
             mut actual_iter: ICL,
             mut expected_iter: ICR,
         ) -> SequenceComparison<T> {
@@ -217,9 +192,7 @@ pub(crate) mod iter {
                     break;
                 }
                 if actual_value.is_none() {
-                    if let Some(expected) = expected_value {
-                        missing.push(expected);
-                    }
+                    missing.push(expected_value.unwrap());
                     missing.extend(expected_iter);
                     break;
                 }
@@ -250,17 +223,69 @@ pub(crate) mod iter {
         }
     }
 
-    // TODO: add quickcheck and/or parameterized (test_case / rstest) tests; for now covered with public API tests
     #[cfg(test)]
     mod tests {
         use super::SequenceComparison;
+        use crate::diff::iter::SequenceOrderComparison;
+        use test_case::test_case;
 
-        #[test]
-        fn relative_order_comparison() {
-            let left = vec![1, 2];
-            let right: Vec<i32> = vec![];
-            let result = SequenceComparison::relative_order_comparison(left.iter(), right.iter());
-            assert_eq!(vec![&1, &2], result.extra);
+        //          left                    right          extra             missing       order   name
+        #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
+        #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], false ; "empty left operand")]
+        #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       true  ; "extra and relative order")]
+        #[test_case(vec![1, 2, 3],          vec![1, 3, 4], vec![&2],         vec![&4],     false ; "not found, both extra and missing")]
+        #[test_case(vec![1, 2],             vec![1, 2, 4], vec![],           vec![&4],     false ; "not found, extra prefix")]
+        #[test_case(vec![1, 2],             vec![0, 1, 2], vec![&1, &2],     vec![&0],     false ; "not found, extra suffix")]
+        #[test_case(vec![1, 2, 3],          vec![3, 1],    vec![&1, &2],     vec![],       false ; "all found, out of order")]
+        #[test_case(vec![1, 2, 3],          vec![1, 2, 3], vec![],           vec![],       true  ; "equal")]
+        #[test_case(vec![1, 2, 3, 4, 5, 6], vec![1, 3, 6], vec![&2, &4, &5], vec![],       true  ; "order preserved relatively")]
+        #[test_case(vec![1, 2, 3, 4],       vec![1, 2, 3], vec![&4],         vec![],       true  ; "prefix sub-sequence")]
+        #[test_case(vec![1, 2, 3, 4],       vec![2, 3, 4], vec![&1],         vec![],       true  ; "suffix sub-sequence")]
+        fn relative_order_comparison(
+            left: Vec<i32>,
+            right: Vec<i32>,
+            expected_extra: Vec<&i32>,
+            expected_missing: Vec<&i32>,
+            expected_order: bool,
+        ) {
+            let result = SequenceComparison::from_iter(
+                left.iter(),
+                right.iter(),
+                SequenceOrderComparison::Relative,
+            );
+            assert_eq!(expected_extra, result.extra);
+            assert_eq!(expected_missing, result.missing);
+            assert_eq!(expected_order, result.order_preserved);
+        }
+
+        //          left                    right          extra             missing       order   name
+        #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
+        #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], true  ; "empty left operand")]
+        #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       false ; "extra and relative order")]
+        #[test_case(vec![1, 2, 3],          vec![2, 3, 4], vec![&1],         vec![&4],     false ; "not found, both extra and missing")]
+        #[test_case(vec![1, 2],             vec![1, 2, 4], vec![],           vec![&4],     true  ; "not found, extra prefix")]
+        #[test_case(vec![1, 2],             vec![0, 1, 2], vec![],           vec![&0],     false ; "not found, extra suffix")]
+        #[test_case(vec![1, 2, 3],          vec![3, 1],    vec![&2],         vec![],       false ; "all found, out of order")]
+        #[test_case(vec![1, 2, 3],          vec![1, 2, 3], vec![],           vec![],       true  ; "equal")]
+        #[test_case(vec![1, 2, 3, 4, 5, 6], vec![1, 3, 6], vec![&2, &4, &5], vec![],       false ; "order preserved relatively")]
+        #[test_case(vec![1, 2, 3, 4, 5, 6], vec![3, 4, 5], vec![&1, &2, &6], vec![],       false ; "order preserved strictly")]
+        #[test_case(vec![1, 2, 3, 4],       vec![1, 2, 3], vec![&4],         vec![],       true  ; "prefix sub-sequence")]
+        #[test_case(vec![1, 2, 3, 4],       vec![2, 3, 4], vec![&1],         vec![],       false ; "suffix sub-sequence")]
+        fn strict_order_comparison(
+            left: Vec<i32>,
+            right: Vec<i32>,
+            expected_extra: Vec<&i32>,
+            expected_missing: Vec<&i32>,
+            expected_order: bool,
+        ) {
+            let result = SequenceComparison::from_iter(
+                left.iter(),
+                right.iter(),
+                SequenceOrderComparison::Strict,
+            );
+            assert_eq!(expected_extra, result.extra);
+            assert_eq!(expected_missing, result.missing);
+            assert_eq!(expected_order, result.order_preserved);
         }
     }
 }
