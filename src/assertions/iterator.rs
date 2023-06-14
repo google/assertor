@@ -284,7 +284,7 @@ where
             expected_iter.clone(),
             SequenceOrderComparison::Strict,
         );
-        if comparison.are_same() {
+        if comparison.contains_exactly() {
             self.new_result().do_ok()
         } else {
             feed_facts_about_item_diff(
@@ -307,9 +307,9 @@ where
             expected_iter.clone(),
             SequenceOrderComparison::Strict,
         );
-        if comparison.are_equal() {
+        if comparison.contains_exactly() && comparison.order_preserved {
             self.new_result().do_ok()
-        } else if comparison.are_same() && !comparison.order_preserved {
+        } else if comparison.contains_exactly() && !comparison.order_preserved {
             self.new_result()
                 .add_simple_fact("contents match, but order was wrong")
                 .add_splitter()

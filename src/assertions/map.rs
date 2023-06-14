@@ -293,8 +293,8 @@ where
                 .add_splitter();
             for MapValueDiff {
                 key,
-                left_value,
-                right_value,
+                actual_value: left_value,
+                expected_value: right_value,
             } in diff.different_values
             {
                 result = result.add_fact(

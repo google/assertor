@@ -6,8 +6,8 @@ pub(crate) mod map {
     /// Difference for a single key in a Map-like data structure.
     pub(crate) struct MapValueDiff<K: Eq + Hash + Debug, V: PartialEq + Debug> {
         pub(crate) key: K,
-        pub(crate) left_value: V,
-        pub(crate) right_value: V,
+        pub(crate) actual_value: V,
+        pub(crate) expected_value: V,
     }
 
     /// Disjoint representation and commonalities between two Map-like data structures.
@@ -21,23 +21,23 @@ pub(crate) mod map {
     // TODO: how would this look like for the `BTreeMap`?
     impl<K: Eq + Hash + Debug, V: PartialEq + Debug> MapComparison<K, V> {
         pub(crate) fn from_hash_maps<'a>(
-            left: &'a HashMap<K, V>,
-            right: &'a HashMap<K, V>,
+            actual: &'a HashMap<K, V>,
+            expected: &'a HashMap<K, V>,
         ) -> MapComparison<&'a K, &'a V> {
             let mut extra = vec![];
             let mut missing = vec![];
             let mut different_values = vec![];
             let mut common = vec![];
 
-            for (key, value) in left {
-                match right.get(key) {
+            for (key, value) in actual {
+                match expected.get(key) {
                     Some(rv) if value == rv => {
                         common.push((key, value));
                     }
                     Some(rv) => different_values.push(MapValueDiff {
                         key,
-                        left_value: value,
-                        right_value: rv,
+                        actual_value: value,
+                        expected_value: rv,
                     }),
                     None => {
                         extra.push((key, value));
@@ -45,8 +45,8 @@ pub(crate) mod map {
                 }
             }
 
-            for (key, value) in right {
-                if !left.contains_key(key) {
+            for (key, value) in expected {
+                if !actual.contains_key(key) {
                     missing.push((key, value));
                 }
             }
@@ -67,7 +67,7 @@ pub(crate) mod map {
         use crate::diff::map::MapComparison;
         use test_case::test_case;
 
-        //          left              right             extra               missing             common               name
+        //          actual            expected          extra               missing             common               name
         #[test_case(vec![],           vec![],           vec![],             vec![],             vec![] ;             "empty maps")]
         #[test_case(vec![("123", 2)], vec![],           vec![(&"123", &2)], vec![],             vec![] ;             "extra entry")]
         #[test_case(vec![],           vec![("123", 2)], vec![],             vec![(&"123", &2)], vec![] ;             "missing entry")]
@@ -105,16 +105,12 @@ pub(crate) mod iter {
     }
 
     impl<T: PartialEq + Debug> SequenceComparison<T> {
-        pub(crate) fn are_same(&self) -> bool {
+        pub(crate) fn contains_exactly(&self) -> bool {
             self.extra.is_empty() && self.missing.is_empty()
         }
 
         pub(crate) fn contains_all(&self) -> bool {
             self.missing.is_empty()
-        }
-
-        pub(crate) fn are_equal(&self) -> bool {
-            self.are_same() && self.order_preserved
         }
 
         pub(crate) fn from_iter<
@@ -229,7 +225,7 @@ pub(crate) mod iter {
         use crate::diff::iter::SequenceOrderComparison;
         use test_case::test_case;
 
-        //          left                    right          extra             missing       order   name
+        //          expected                actual         extra             missing       order   name
         #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
         #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], false ; "empty left operand")]
         #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       true  ; "extra and relative order")]
@@ -258,7 +254,7 @@ pub(crate) mod iter {
             assert_eq!(expected_order, result.order_preserved);
         }
 
-        //          left                    right          extra             missing       order   name
+        //          expected                actual         extra             missing       order   name
         #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
         #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], true  ; "empty left operand")]
         #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       false ; "extra and relative order")]
