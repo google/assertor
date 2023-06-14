@@ -23,7 +23,7 @@ use crate::assertions::iterator::{
     check_contains, check_does_not_contain, check_is_empty, check_is_not_empty,
 };
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
-use crate::diff::{MapComparison, MapValueDiff};
+use crate::diff::map::{MapComparison, MapValueDiff};
 
 /// Trait for map assertion.
 ///
@@ -253,7 +253,7 @@ where
             return self.new_result().do_ok();
         }
         let mut result = self.new_result();
-        if !diff.exclusive_right.is_empty() {
+        if !diff.missing.is_empty() {
             result = result
                 .add_fact(
                     format!(
@@ -263,12 +263,12 @@ where
                     ),
                     format!(
                         "but {} {} not found",
-                        diff.exclusive_right.len(),
-                        pluralize(diff.exclusive_right.len(), "entry", "entries")
+                        diff.missing.len(),
+                        pluralize(diff.missing.len(), "entry", "entries")
                     ),
                 )
                 .add_splitter();
-            for (key, value) in diff.exclusive_right {
+            for (key, value) in diff.missing {
                 result =
                     result.add_fact("entry was not found", format!("{:?} -> {:?}", key, value));
             }
@@ -293,8 +293,8 @@ where
                 .add_splitter();
             for MapValueDiff {
                 key,
-                left_value,
-                right_value,
+                actual_value: left_value,
+                expected_value: right_value,
             } in diff.different_values
             {
                 result = result.add_fact(
