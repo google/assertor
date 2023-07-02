@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::env;
+use std::{env, fs};
 
 fn main() {
     env::current_dir()
-        .map(|root| license::check_and_generate_license_headers(root))
+        .map(|root| {
+            license::check_and_generate_license_headers(
+                root,
+                |path| fs::read_to_string(path).unwrap(),
+                |path, content| {
+                    fs::write(path, content.as_bytes());
+                },
+            )
+        })
         .unwrap()
 }
 
@@ -24,9 +32,6 @@ mod license {
     use chrono::Datelike;
     use lazy_static::lazy_static;
     use std::collections::HashSet;
-    use std::fs;
-    use std::fs::File;
-    use std::io::Write;
     use std::path::{Path, PathBuf};
     use walkdir::WalkDir;
 
@@ -55,28 +60,39 @@ mod license {
         static ref SKIP_DIR_NAMES: HashSet<String> = HashSet::from(["target".to_string()]);
     }
 
-    pub(crate) fn check_and_generate_license_headers(root: PathBuf) {
+    pub(crate) fn check_and_generate_license_headers(
+        root: PathBuf,
+        read_file: fn(&Path) -> String,
+        write_file: fn(&Path, String) -> (),
+    ) {
         for entry in WalkDir::new(root).into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
-            let extension = path.extension();
-            if extension.is_none() {
-                continue;
+            if let Some(new_content) = overwrite_with_license_content(path, read_file) {
+                write_file(path, new_content)
             }
-            if LICENSED_EXTENSIONS.contains(extension.unwrap().to_str().unwrap()) {
-                // process supported file extension
-                if let Some(mut content) = needs_license_header(path) {
-                    let mut new_content = LICENSE_HEADER.to_string();
-                    new_content.push_str(content.as_str());
-                    fs::write(path, new_content.as_bytes());
-                }
-            }
-            // skip files without extension
         }
     }
 
+    fn overwrite_with_license_content(
+        path: &Path,
+        read_file: fn(&Path) -> String,
+    ) -> Option<String> {
+        let extension = path.extension();
+        if extension.is_none() {
+            return None;
+        }
+        let extension_str = extension.unwrap().to_str().unwrap();
+        if LICENSED_EXTENSIONS.contains(extension_str) {
+            if let Some(content) = needs_license_header(path, read_file) {
+                return Some(concat(LICENSE_HEADER.as_str(), content));
+            }
+        }
+        None
+    }
+
     /// Return Some(content) if file needs license appended.
-    fn needs_license_header(path: &Path) -> Option<String> {
-        let content = fs::read_to_string(path).unwrap();
+    fn needs_license_header(path: &Path, read_file: fn(&Path) -> String) -> Option<String> {
+        let content = read_file(path);
         if content.starts_with(&LICENSE_HEADER.to_string()) {
             None
         } else if content.starts_with(&LICENCE_HEADER_PREFIX.to_string()) {
@@ -94,9 +110,13 @@ mod license {
             return None;
         } else {
             // no license comment, append licence at the start with the linebreak
-            let mut space = "\n".to_string();
-            space.push_str(content.as_str());
-            Some(space)
+            Some(concat("\n", content))
         }
+    }
+
+    fn concat(s1: &str, s2: String) -> String {
+        let mut result = s1.to_string();
+        result.push_str(s2.as_str());
+        result
     }
 }
