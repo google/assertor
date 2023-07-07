@@ -102,6 +102,13 @@ where
         K: Eq + Hash + Debug,
         V: Eq + Debug;
 
+    /// Checks that the subject contains only entries from `expected`.
+    fn contains_exactly<BM>(&self, expected: BM) -> R
+    where
+        BM: Borrow<HashMap<K, V>>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug;
+
     /// Returns a new subject which is an key set of the subject and which implements
     /// [`crate::IteratorAssertion`].
     ///
@@ -240,73 +247,21 @@ where
         K: Eq + Hash + Debug,
         V: Eq + Debug,
     {
-        fn pluralize<'a>(count: usize, single: &'a str, plural: &'a str) -> &'a str {
-            if count == 1 {
-                single
-            } else {
-                plural
-            }
-        }
         let expected_map = expected.borrow();
         let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
         if diff.common.len() == expected_map.len() {
             return self.new_result().do_ok();
         }
-        let mut result = self.new_result();
-        if !diff.missing.is_empty() {
-            result = result
-                .add_fact(
-                    format!(
-                        "expected to contain at least {} provided {}",
-                        expected_map.len(),
-                        pluralize(expected_map.len(), "entry", "entries")
-                    ),
-                    format!(
-                        "but {} {} not found",
-                        diff.missing.len(),
-                        pluralize(diff.missing.len(), "entry", "entries")
-                    ),
-                )
-                .add_splitter();
-            for (key, value) in diff.missing {
-                result =
-                    result.add_fact("entry was not found", format!("{:?} -> {:?}", key, value));
-            }
-        }
-        if !diff.different_values.is_empty() {
-            if !result.facts().is_empty() {
-                result = result.add_splitter();
-            }
-            result = result
-                .add_fact(
-                    "expected to contain the same entries",
-                    format!(
-                        "but found {} {} different",
-                        diff.different_values.len(),
-                        pluralize(
-                            diff.different_values.len(),
-                            "entry that is",
-                            "entries that are"
-                        )
-                    ),
-                )
-                .add_splitter();
-            for MapValueDiff {
-                key,
-                actual_value: left_value,
-                expected_value: right_value,
-            } in diff.different_values
-            {
-                result = result.add_fact(
-                    format!("key {:?} was mapped to an unexpected value", key),
-                    format!(
-                        "expected value {:?}, but found {:?}",
-                        right_value, left_value
-                    ),
-                );
-            }
-        }
-        return result.do_fail();
+        let (result, splitter) = feed_missing_entries_facts(
+            "at least",
+            self.new_result(),
+            &diff,
+            expected_map.len(),
+            false,
+        );
+        feed_different_values_facts(result, &diff, splitter)
+            .0
+            .do_fail()
     }
 
     fn does_not_contain_any<BM>(&self, expected: BM) -> R
@@ -330,6 +285,30 @@ where
         return self.new_result().do_ok();
     }
 
+    fn contains_exactly<BM>(&self, expected: BM) -> R
+    where
+        BM: Borrow<HashMap<K, V>>,
+        K: Eq + Hash + Debug,
+        V: Eq + Debug,
+    {
+        let expected_map = expected.borrow();
+        let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
+        if diff.extra.is_empty() && diff.missing.is_empty() && diff.different_values.is_empty() {
+            return self.new_result().do_ok();
+        }
+        let (result, splitter) = feed_missing_entries_facts(
+            "exactly",
+            self.new_result(),
+            &diff,
+            expected_map.len(),
+            false,
+        );
+        let (result, splitter) = feed_extra_entries_facts(result, &diff, splitter);
+        feed_different_values_facts(result, &diff, splitter)
+            .0
+            .do_fail()
+    }
+
     fn key_set(&self) -> Subject<Keys<K, V>, (), R> {
         self.new_owned_subject(
             self.actual().keys(),
@@ -337,6 +316,120 @@ where
             (),
         )
     }
+}
+
+fn pluralize<'a>(count: usize, single: &'a str, plural: &'a str) -> &'a str {
+    if count == 1 {
+        single
+    } else {
+        plural
+    }
+}
+
+fn feed_different_values_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
+    mut result: AssertionResult,
+    diff: &MapComparison<&K, &V>,
+    splitter: bool,
+) -> (AssertionResult, bool) {
+    let has_diffs = !diff.different_values.is_empty();
+    if has_diffs {
+        if splitter {
+            result = result.add_splitter();
+        }
+        result = result
+            .add_fact(
+                "expected to contain the same entries",
+                format!(
+                    "but found {} {} different",
+                    diff.different_values.len(),
+                    pluralize(
+                        diff.different_values.len(),
+                        "entry that is",
+                        "entries that are"
+                    )
+                ),
+            )
+            .add_splitter();
+        for MapValueDiff {
+            key,
+            actual_value: left_value,
+            expected_value: right_value,
+        } in &diff.different_values
+        {
+            result = result.add_fact(
+                format!("key {:?} was mapped to an unexpected value", key),
+                format!(
+                    "expected value {:?}, but found {:?}",
+                    right_value, left_value
+                ),
+            );
+        }
+    }
+    (result, has_diffs)
+}
+
+fn feed_missing_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
+    containment_spec: &str,
+    mut result: AssertionResult,
+    diff: &MapComparison<&K, &V>,
+    expected_length: usize,
+    splitter: bool,
+) -> (AssertionResult, bool) {
+    let has_diffs = !diff.missing.is_empty();
+    if has_diffs {
+        if splitter {
+            result = result.add_splitter();
+        }
+        result = result
+            .add_fact(
+                format!(
+                    "expected to contain {} {} provided {}",
+                    containment_spec,
+                    expected_length,
+                    pluralize(expected_length, "entry", "entries")
+                ),
+                format!(
+                    "but {} {} not found",
+                    diff.missing.len(),
+                    pluralize(diff.missing.len(), "entry", "entries")
+                ),
+            )
+            .add_splitter();
+        for (key, value) in &diff.missing {
+            result = result.add_fact("entry was not found", format!("{:?} -> {:?}", key, value));
+        }
+    }
+    (result, has_diffs)
+}
+
+fn feed_extra_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
+    mut result: AssertionResult,
+    diff: &MapComparison<&K, &V>,
+    splitter: bool,
+) -> (AssertionResult, bool) {
+    let has_diffs = !diff.extra.is_empty();
+    if has_diffs {
+        if splitter {
+            result = result.add_splitter();
+        }
+        result = result
+            .add_fact(
+                format!("expected to not contain additional entries"),
+                format!(
+                    "but {} additional {} found",
+                    diff.extra.len(),
+                    pluralize(diff.extra.len(), "entry was", "entries were")
+                ),
+            )
+            .add_splitter();
+        for (key, value) in &diff.extra {
+            result = result.add_fact(
+                "unexpected entry was found",
+                format!("{:?} -> {:?}", key, value),
+            );
+        }
+    }
+    (result, has_diffs)
 }
 
 #[cfg(test)]
@@ -576,6 +669,87 @@ mod tests {
             Fact::new(
                 r#"key "c" was mapped to an unexpected value"#,
                 r#"expected value "5", but found "3""#,
+            ),
+        ]);
+    }
+
+    #[test]
+    fn contains_exactly() {
+        let mut map_abc: HashMap<&str, &str> = HashMap::new();
+        map_abc.insert("a", "1");
+        map_abc.insert("b", "2");
+        map_abc.insert("c", "3");
+        assert_that!(map_abc).contains_exactly(HashMap::from([("a", "1"), ("c", "3"), ("b", "2")]));
+
+        // case 1: missing key
+        let result = check_that!(map_abc).contains_exactly(HashMap::from([("not exist", "1")]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected to contain exactly 1 provided entry",
+                "but 1 entry not found",
+            ),
+            Fact::new_splitter(),
+            Fact::new("entry was not found", r#""not exist" -> "1""#),
+        ]);
+
+        // case 2: extra key
+        let result = check_that!(HashMap::from([
+            ("a", "1"),
+            ("c", "3"),
+            ("b", "2"),
+            ("ex", "1")
+        ]))
+        .contains_exactly(map_abc);
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected to not contain additional entries",
+                "but 1 additional entry was found",
+            ),
+            Fact::new_splitter(),
+            Fact::new("unexpected entry was found", r#""ex" -> "1""#),
+        ]);
+
+        // case 3: mismatched entries
+        let result =
+            check_that!(HashMap::from([("a", "1")])).contains_at_least(HashMap::from([("a", "2")]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected to contain the same entries",
+                "but found 1 entry that is different",
+            ),
+            Fact::new_splitter(),
+            Fact::new(
+                r#"key "a" was mapped to an unexpected value"#,
+                r#"expected value "2", but found "1""#,
+            ),
+        ]);
+
+        // case 4: all mismatches
+        let result = check_that!(HashMap::from([("a", "1"), ("b", "2")]))
+            .contains_exactly(HashMap::from([("a", "2"), ("c", "2")]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected to contain exactly 2 provided entries",
+                "but 1 entry not found",
+            ),
+            Fact::new_splitter(),
+            Fact::new("entry was not found", r#""c" -> "2""#),
+            Fact::new_splitter(),
+            Fact::new(
+                "expected to not contain additional entries",
+                "but 1 additional entry was found",
+            ),
+            Fact::new_splitter(),
+            Fact::new("unexpected entry was found", r#""b" -> "2""#),
+            Fact::new_splitter(),
+            Fact::new(
+                "expected to contain the same entries",
+                "but found 1 entry that is different",
+            ),
+            Fact::new_splitter(),
+            Fact::new(
+                r#"key "a" was mapped to an unexpected value"#,
+                r#"expected value "2", but found "1""#,
             ),
         ]);
     }
