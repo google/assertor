@@ -51,7 +51,8 @@ use crate::EqualityAssertion;
 /// ```
 pub trait SetAssertion<'a, S, T, R> {
     /// Checks that the subject has the given length.
-    fn has_length(&self, length: usize) -> R;
+    fn has_length(&self, length: usize) -> R where
+        T: Debug;
 
     /// Checks that the subject is empty.
     fn is_empty(&self) -> R
@@ -99,19 +100,8 @@ where
     where
         T: PartialEq + Eq + Debug + Hash,
     {
-        if self.actual().contains(expected.borrow()) {
-            self.new_result().do_ok()
-        } else {
-            self.new_result()
-                .add_fact("expected to contain", format!("{:?}", expected.borrow()))
-                .add_simple_fact("but did not")
-                .add_fact(
-                    "though it did contain",
-                    // TODO: better error message
-                    format!("{:?}", self.actual().iter().collect::<Vec<_>>()),
-                )
-                .do_fail()
-        }
+        self.new_owned_subject(self.actual().iter(), None, ())
+            .contains(expected.borrow())
     }
 
     fn does_not_contain<B>(&self, element: B) -> R
