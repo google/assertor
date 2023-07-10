@@ -51,7 +51,8 @@ use crate::EqualityAssertion;
 /// ```
 pub trait SetAssertion<'a, S, T, R> {
     /// Checks that the subject has the given length.
-    fn has_length(&self, length: usize) -> R where
+    fn has_length(&self, length: usize) -> R
+    where
         T: Debug;
 
     /// Checks that the subject is empty.
@@ -149,7 +150,7 @@ mod tests {
         assert_that!(check_that!(HashSet::from_iter(vec![1].iter())).is_empty()).facts_are(vec![
             Fact::new_simple_fact("expected to be empty"),
             Fact::new_splitter(),
-            Fact::new("actual", "[1]"),
+            Fact::new_multi_value_fact("actual", vec!["1"]),
         ]);
     }
 

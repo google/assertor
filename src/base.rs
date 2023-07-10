@@ -293,6 +293,8 @@ pub struct AssertionResult {
 
 #[allow(missing_docs)]
 impl AssertionResult {
+    const DEBUG_LENGTH_WRAP_LIMIT: usize = 80;
+
     pub(self) fn new(location: &Option<Location>) -> Self {
         AssertionResult {
             location: location.as_ref().map(|loc| format!("{}", loc)),
@@ -303,6 +305,17 @@ impl AssertionResult {
     #[inline]
     pub fn add_fact<K: Into<String>, V: Into<String>>(mut self, key: K, value: V) -> Self {
         self.facts.push(Fact::new(key, value));
+        self
+    }
+
+    #[inline]
+    pub fn add_raw_key_values_fact<K: Into<String>, V: Debug>(
+        mut self,
+        key: K,
+        values: Vec<V>,
+    ) -> Self {
+        let str_values = values.iter().map(|v| format!("{:?}", v)).collect();
+        self.facts.push(Fact::new_multi_value_fact(key, str_values));
         self
     }
 
@@ -335,8 +348,8 @@ impl AssertionResult {
             .iter()
             .flat_map(|fact| match fact {
                 Fact::KeyValue { key, .. } => Some(key),
-                Fact::Value { .. } => None,
-                Fact::Splitter => None,
+                Fact::KeyValues { key, .. } => Some(key),
+                _ => None,
             })
             .map(|key| key.len())
             .max()
@@ -350,6 +363,47 @@ impl AssertionResult {
                     value = value,
                     width = longest_key_length
                 )),
+                Fact::KeyValues { key, values } => {
+                    let values_size = values.len();
+                    let use_multiline_output = values
+                        .clone()
+                        .iter()
+                        .map(|x| format!("{:?}", x).len())
+                        .max_by(|x, y| x.cmp(y))
+                        .unwrap_or(0)
+                        > Self::DEBUG_LENGTH_WRAP_LIMIT;
+                    let formatted_values = format!(
+                        "{}",
+                        if use_multiline_output {
+                            let elements = values
+                                .iter()
+                                .map(|el| format!("  - {}", el))
+                                .collect::<Vec<_>>()
+                                .join("\n");
+                            if values_size > 0 {
+                                format!("[\n{}\n]", elements)
+                            } else {
+                                "[]".to_string()
+                            }
+                        } else {
+                            format!(
+                                "[ {} ]",
+                                values
+                                    .iter()
+                                    .map(|el| format!("{}", el))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            )
+                        }
+                    );
+                    println!("{}", formatted_values);
+                    messages.push(format!(
+                        "{key:width$}: {value}",
+                        key = key,
+                        value = formatted_values,
+                        width = longest_key_length
+                    ));
+                }
                 Fact::Value { value } => messages.push(value.to_string()),
                 Fact::Splitter => messages.push(String::from("---")),
             }
@@ -415,6 +469,13 @@ pub enum Fact {
     /// Fact {key: "actual", value: "var"}
     /// ```
     KeyValue { key: String, value: String },
+    /// Keyed assertion message for multiple values
+    ///
+    /// # Example
+    /// ```text
+    /// Fact {key: "expected", values: vec!["foo", "bar"]}
+    /// ```
+    KeyValues { key: String, values: Vec<String> },
     /// Single assertion message
     ///
     /// # Example
@@ -437,6 +498,12 @@ impl Fact {
     pub fn new_simple_fact<V: Into<String>>(value: V) -> Fact {
         Fact::Value {
             value: value.into(),
+        }
+    }
+    pub fn new_multi_value_fact<K: Into<String>, V: Into<String>>(key: K, values: Vec<V>) -> Fact {
+        Fact::KeyValues {
+            key: key.into(),
+            values: values.into_iter().map(|v| v.into()).collect(),
         }
     }
     pub fn new_splitter() -> Fact {
@@ -544,6 +611,76 @@ s  : hort"#
 foo: bar
 I am ninja
 s  : hort"#
+        );
+        assert_eq!(
+            AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
+                .add_fact("looooong key", "align indent")
+                .add_raw_key_values_fact("kv_key", vec!["short_value"])
+                .generate_message(),
+            r#"assertion failed: foo.rs:123:456
+looooong key: align indent
+kv_key      : [ "short_value" ]"#
+        );
+        assert_eq!(
+            AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
+                .add_fact("looooong key", "align indent")
+                .add_raw_key_values_fact("kv_key", vec!["short_value", "Very long value is formatted using new lines, this is done to improve output readability."])
+                .generate_message(),
+            r#"assertion failed: foo.rs:123:456
+looooong key: align indent
+kv_key      : [
+  - "short_value"
+  - "Very long value is formatted using new lines, this is done to improve output readability."
+]"#
+        );
+        assert_eq!(
+            AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
+                .add_raw_key_values_fact("kv_key", vec![1, 2, 3])
+                .generate_message(),
+            r#"assertion failed: foo.rs:123:456
+kv_key: [ 1, 2, 3 ]"#
+        );
+        assert_eq!(
+            AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
+                .add_raw_key_values_fact("kv_key", vec!["1", "2", "3"])
+                .generate_message(),
+            r#"assertion failed: foo.rs:123:456
+kv_key: [ "1", "2", "3" ]"#
+        );
+        #[derive(Debug)]
+        struct LongOutputData<'a> {
+            val: Option<i32>,
+            nested: Vec<&'a str>,
+        }
+        assert_eq!(
+            AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
+                .add_raw_key_values_fact(
+                    "kv_key_sht",
+                    vec![LongOutputData {
+                        val: None,
+                        nested: vec!["123", "321"]
+                    }]
+                )
+                .add_raw_key_values_fact(
+                    "kv_key_lng",
+                    vec![
+                        LongOutputData {
+                            val: Some(123456789),
+                            nested: vec!["hello", "long", "debug", "output"]
+                        },
+                        LongOutputData {
+                            val: None,
+                            nested: vec![]
+                        }
+                    ]
+                )
+                .generate_message(),
+            r#"assertion failed: foo.rs:123:456
+kv_key_sht: [ LongOutputData { val: None, nested: ["123", "321"] } ]
+kv_key_lng: [
+  - LongOutputData { val: Some(123456789), nested: ["hello", "long", "debug", "output"] }
+  - LongOutputData { val: None, nested: [] }
+]"#
         );
     }
 }

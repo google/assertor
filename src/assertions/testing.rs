@@ -112,8 +112,8 @@ where
             .iter()
             .flat_map(|fact| match fact {
                 Fact::KeyValue { key, .. } => Some(key),
-                Fact::Value { .. } => None,
-                Fact::Splitter => None,
+                Fact::KeyValues { key, .. } => Some(key),
+                _ => None,
             })
             .collect();
         self.new_owned_subject(
@@ -169,8 +169,8 @@ mod tests {
             Fact::new("value of", "failed.facts()"),
             Fact::new("unexpected (1)", r#"[Value { value: "not same" }]"#),
             Fact::new_splitter(),
-            Fact::new("expected", "[]"),
-            Fact::new("actual", r#"[Value { value: "not same" }]"#),
+            Fact::new_multi_value_fact::<&str, &str>("expected", vec![]),
+            Fact::new_multi_value_fact("actual", vec!["Value { value: \"not same\" }"]),
         ]);
     }
 }

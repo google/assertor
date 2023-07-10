@@ -309,13 +309,12 @@ where
         if comparison.contains_exactly() && comparison.order_preserved {
             self.new_result().do_ok()
         } else if comparison.contains_exactly() && !comparison.order_preserved {
-            let mut result = self
-                .new_result()
+            self.new_result()
                 .add_simple_fact("contents match, but order was wrong")
-                .add_splitter();
-            result = add_input_iter_fact("expected", &mut result, expected_iter);
-            result = add_input_iter_fact("actual", &mut result, self.actual().clone());
-            result.do_fail()
+                .add_splitter()
+                .add_raw_key_values_fact("expected", expected_iter.collect())
+                .add_raw_key_values_fact("actual", self.actual().clone().collect())
+                .do_fail()
         } else {
             feed_facts_about_item_diff(
                 self.new_result(),
@@ -340,19 +339,17 @@ where
             self.new_result().do_ok()
         } else {
             let missing = comparison.missing;
-            let mut result = self
-                .new_result()
+            self.new_result()
                 .add_fact(
                     format!("missing ({})", missing.len()),
                     format!("{:?}", missing),
                 )
+                .add_splitter()
+                .add_raw_key_values_fact("expected to contain at least", expected_iter.collect())
+                .add_raw_key_values_fact("but was", self.actual().clone().collect())
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
-                .add_splitter();
-            result =
-                add_input_iter_fact("expected to contain at least", &mut result, expected_iter);
-            result = add_input_iter_fact("but was", &mut result, self.actual().clone());
-            result.do_fail()
+                .do_fail()
         }
     }
 
@@ -375,16 +372,15 @@ where
         {
             self.new_result().do_ok()
         } else {
-            let mut result = self
-                .new_result()
+            self.new_result()
                 .add_fact(
                     format!("found ({})", intersection.len()),
                     format!("{:?}", intersection),
                 )
-                .add_splitter();
-            result = add_input_iter_fact("expected to contain none of", &mut result, elements);
-            result = add_input_iter_fact("but was", &mut result, self.actual().clone());
-            result.do_fail()
+                .add_splitter()
+                .add_raw_key_values_fact("expected to contain none of", elements.collect())
+                .add_raw_key_values_fact("but was", self.actual().clone().clone().collect())
+                .do_fail()
         }
     }
 
@@ -400,31 +396,27 @@ where
         if comparison.contains_all() && comparison.order_preserved {
             self.new_result().do_ok()
         } else if comparison.contains_all() {
-            let mut result = self
-                .new_result()
-                .add_simple_fact("required elements were all found, but order was wrong");
-            result = add_input_iter_fact(
-                "expected order for required elements",
-                &mut result,
-                expected_iter,
-            );
-            result = add_input_iter_fact("but was", &mut result, self.actual().clone());
-            result.do_fail()
+            self.new_result()
+                .add_simple_fact("required elements were all found, but order was wrong")
+                .add_raw_key_values_fact(
+                    "expected order for required elements",
+                    expected_iter.clone().collect(),
+                )
+                .add_raw_key_values_fact("but was", self.actual().clone().collect())
+                .do_fail()
         } else {
             let missing = comparison.missing;
-            let mut result = self
-                .new_result()
+            self.new_result()
                 .add_fact(
                     format!("missing ({})", missing.len()),
                     format!("{:?}", missing),
                 )
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
-                .add_splitter();
-            result =
-                add_input_iter_fact("expected to contain at least", &mut result, expected_iter);
-            result = add_input_iter_fact("but was", &mut result, self.actual().clone());
-            result.do_fail()
+                .add_splitter()
+                .add_raw_key_values_fact("expected to contain at least", expected_iter.collect())
+                .add_raw_key_values_fact("but was", self.actual().clone().collect())
+                .do_fail()
         }
     }
 
@@ -464,11 +456,11 @@ where
     if actual_iter.clone().next().is_none() {
         assertion_result.do_ok()
     } else {
-        let mut result = assertion_result
+        assertion_result
             .add_simple_fact("expected to be empty")
-            .add_splitter();
-        result = add_input_iter_fact("actual", &mut result, actual_iter);
-        result.do_fail()
+            .add_splitter()
+            .add_raw_key_values_fact("actual", actual_iter.collect())
+            .do_fail()
     }
 }
 
@@ -502,11 +494,11 @@ where
     if actual_iter.clone().any(|x| x.eq(element.borrow())) {
         assertion_result.do_ok()
     } else {
-        let mut result = assertion_result
+        assertion_result
             .add_fact("expected to contain", format!("{:?}", element))
-            .add_simple_fact("but did not");
-        result = add_input_iter_fact("though it did contain", &mut result, actual_iter);
-        result.do_fail()
+            .add_simple_fact("but did not")
+            .add_raw_key_values_fact("though it did contain", actual_iter.clone().collect())
+            .do_fail()
     }
 }
 
@@ -521,11 +513,11 @@ where
     T: PartialEq + Debug,
 {
     if actual_iter.clone().any(|x| x.eq(element.borrow())) {
-        let mut result = assertion_result
+        assertion_result
             .add_fact("expected to not contain", format!("{:?}", element))
-            .add_simple_fact("but element was found");
-        result = add_input_iter_fact("though it did contain", &mut result, actual_iter);
-        result.do_fail()
+            .add_simple_fact("but element was found")
+            .add_raw_key_values_fact("though it did contain", actual_iter.clone().collect())
+            .do_fail()
     } else {
         assertion_result.do_ok()
     }
@@ -561,9 +553,9 @@ pub(crate) fn feed_facts_about_item_diff<
     if splitter {
         result = result.add_splitter();
     }
-    result = add_input_iter_fact("expected", &mut result, expected_iter);
-    result = add_input_iter_fact("actual", &mut result, actual_iter);
     result
+        .add_raw_key_values_fact("expected", expected_iter.clone().collect())
+        .add_raw_key_values_fact("actual", actual_iter.clone().collect())
 }
 
 pub(crate) fn check_has_length<I, T, R>(
@@ -588,43 +580,9 @@ where
     }
 }
 
-pub(crate) fn add_input_iter_fact<A: Debug, IA: Iterator<Item = A> + Clone>(
-    fact_name: &str,
-    result: &mut AssertionResult,
-    iter: IA,
-) -> AssertionResult {
-    let use_multiline_output = iter
-        .clone()
-        .map(|x| format!("{:?}", x).len())
-        .max_by(|x, y| x.cmp(y))
-        .unwrap_or(0)
-        > DEBUG_LENGTH_WRAP_LIMIT;
-    let formatted = format!(
-        "{}",
-        if use_multiline_output {
-            let elements = iter
-                .clone()
-                .map(|el| format!("  - {:?}", el))
-                .collect::<Vec<_>>()
-                .join("\n");
-            if iter.clone().next().is_some() {
-                format!("[\n{}\n]", elements)
-            } else {
-                "[]".to_string()
-            }
-        } else {
-            format!("{:?}", iter.collect::<Vec<_>>())
-        }
-    );
-    result.clone().add_fact(fact_name, formatted)
-}
-
-const DEBUG_LENGTH_WRAP_LIMIT: usize = 80;
-
 #[cfg(test)]
 mod tests {
     use crate::testing::*;
-    use crate::EqualityAssertion;
 
     use super::*;
 
@@ -642,7 +600,7 @@ mod tests {
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains(&10)).facts_are(vec![
             Fact::new("expected to contain", "10"),
             Fact::new_simple_fact("but did not"),
-            Fact::new("though it did contain", "[1, 2, 3]"),
+            Fact::new_multi_value_fact("though it did contain", vec!["1", "2", "3"]),
         ]);
     }
 
@@ -655,8 +613,16 @@ mod tests {
             .facts_are(vec![
                 Fact::new("unexpected (3)", r#"['f', 'o', 'o']"#),
                 Fact::Splitter,
-                Fact::new("expected", r#"['b', 'a', 'z', 'b', 'a', 'r']"#),
-                Fact::new("actual", r#"['f', 'o', 'o', 'b', 'a', 'r', 'b', 'a', 'z']"#),
+                Fact::new_multi_value_fact(
+                    "expected",
+                    vec!["'b'", "'a'", "'z'", "'b'", "'a'", "'r'"],
+                ),
+                Fact::new_multi_value_fact(
+                    "actual",
+                    vec![
+                        "'f'", "'o'", "'o'", "'b'", "'a'", "'r'", "'b'", "'a'", "'z'",
+                    ],
+                ),
             ]);
     }
 
@@ -668,23 +634,23 @@ mod tests {
             .facts_are(vec![
                 Fact::new("missing (1)", "[3]"),
                 Fact::new_splitter(),
-                Fact::new("expected", "[1, 2, 3]"),
-                Fact::new("actual", "[1, 2]"),
+                Fact::new_multi_value_fact("expected", vec!["1", "2", "3"]),
+                Fact::new_multi_value_fact("actual", vec!["1", "2"]),
             ]);
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains_exactly_in_order(vec![1, 2].iter()))
             .facts_are(vec![
                 Fact::new("unexpected (1)", "[3]"),
                 Fact::new_splitter(),
-                Fact::new("expected", "[1, 2]"),
-                Fact::new("actual", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected", vec!["1", "2"]),
+                Fact::new_multi_value_fact("actual", vec!["1", "2", "3"]),
             ]);
         assert_that!(check_that!(vec![1, 2].iter()).contains_exactly_in_order(vec![2, 3].iter()))
             .facts_are(vec![
                 Fact::new("missing (1)", "[3]"),
                 Fact::new("unexpected (1)", "[1]"),
                 Fact::new_splitter(),
-                Fact::new("expected", "[2, 3]"),
-                Fact::new("actual", "[1, 2]"),
+                Fact::new_multi_value_fact("expected", vec!["2", "3"]),
+                Fact::new_multi_value_fact("actual", vec!["1", "2"]),
             ]);
         assert_that!(
             check_that!(vec![2, 1, 3].iter()).contains_exactly_in_order(vec![1, 2, 3].iter())
@@ -692,8 +658,8 @@ mod tests {
         .facts_are(vec![
             Fact::new_simple_fact("contents match, but order was wrong"),
             Fact::new_splitter(),
-            Fact::new("expected", "[1, 2, 3]"),
-            Fact::new("actual", "[2, 1, 3]"),
+            Fact::new_multi_value_fact("expected", vec!["1", "2", "3"]),
+            Fact::new_multi_value_fact("actual", vec!["2", "1", "3"]),
         ])
     }
 
@@ -709,8 +675,8 @@ mod tests {
             .facts_are(vec![
                 Fact::new("missing (1)", "[4]"),
                 Fact::new_splitter(),
-                Fact::new("expected to contain at least", "[3, 4]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected to contain at least", vec!["3", "4"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ])
     }
 
@@ -727,22 +693,22 @@ mod tests {
             .facts_are(vec![
                 Fact::new("missing (1)", "[4]"),
                 Fact::new_splitter(),
-                Fact::new("expected to contain at least", "[3, 4]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected to contain at least", vec!["3", "4"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ]);
         assert_that!(
             check_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![3, 2, 1].iter())
         )
         .facts_are(vec![
             Fact::new_simple_fact("required elements were all found, but order was wrong"),
-            Fact::new("expected order for required elements", "[3, 2, 1]"),
-            Fact::new("but was", "[1, 2, 3]"),
+            Fact::new_multi_value_fact("expected order for required elements", vec!["3", "2", "1"]),
+            Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
         ]);
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![2, 1].iter()))
             .facts_are(vec![
                 Fact::new_simple_fact("required elements were all found, but order was wrong"),
-                Fact::new("expected order for required elements", "[2, 1]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected order for required elements", vec!["2", "1"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ]);
     }
 
@@ -754,7 +720,7 @@ mod tests {
         assert_that!(check_that!(vec![1].iter()).is_empty()).facts_are(vec![
             Fact::new_simple_fact("expected to be empty"),
             Fact::new_splitter(),
-            Fact::new("actual", "[1]"),
+            Fact::new_multi_value_fact("actual", vec!["1"]),
         ]);
     }
 
@@ -780,7 +746,7 @@ mod tests {
         assert_that!(check_that!(vec![1].iter()).does_not_contain(&1)).facts_are(vec![
             Fact::new("expected to not contain", "1"),
             Fact::new_simple_fact("but element was found"),
-            Fact::new("though it did contain", "[1]"),
+            Fact::new_multi_value_fact("though it did contain", vec!["1"]),
         ]);
     }
 
@@ -796,110 +762,8 @@ mod tests {
             .facts_are(vec![
                 Fact::new("found (2)", "[2, 3]"),
                 Fact::new_splitter(),
-                Fact::new("expected to contain none of", "[2, 3]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected to contain none of", vec!["2", "3"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ]);
-    }
-
-    #[test]
-    fn large_debug_output_wrap() {
-        let absent_value = LongDebugObject {
-            nested: vec![],
-            plain: "".to_string(),
-        };
-        let long_debug_actual = vec![
-            LongDebugObject {
-                nested: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-                plain: "some very long value".to_string(),
-            },
-            LongDebugObject {
-                nested: vec![1, 2],
-                plain: "".to_string(),
-            },
-        ];
-        let long_debug_expected_fails = vec![
-            LongDebugObject {
-                nested: vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-                plain: "some very long value".to_string(),
-            },
-            LongDebugObject {
-                nested: vec![1, 1],
-                plain: "".to_string(),
-            },
-        ];
-        let actual_wrapped =
-            r#"[
-  - LongDebugObject { nested: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], plain: "some very long value" }
-  - LongDebugObject { nested: [1, 2], plain: "" }
-]"#.to_string();
-        assert!(
-            format!("{:?}", long_debug_actual.iter().next().unwrap()).len()
-                > DEBUG_LENGTH_WRAP_LIMIT
-        );
-        let expected_wrapped =
-            r#"[
-  - LongDebugObject { nested: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], plain: "some very long value" }
-  - LongDebugObject { nested: [1, 1], plain: "" }
-]"#.to_string();
-        assert!(
-            format!("{:?}", long_debug_actual.iter().next().unwrap()).len()
-                > DEBUG_LENGTH_WRAP_LIMIT
-        );
-
-        // contains
-        assert_that!(check_that!(long_debug_actual.iter()).contains(&absent_value))
-            .fact_value_for_key("though it did contain")
-            .is_equal_to(actual_wrapped.clone());
-
-        // does not contain
-        assert_that!(check_that!(long_debug_actual.iter())
-            .does_not_contain(long_debug_actual.iter().next().unwrap()))
-        .fact_value_for_key("though it did contain")
-        .is_equal_to(actual_wrapped.clone());
-
-        // contains_exactly
-        assert_that!(check_that!(long_debug_actual.iter())
-            .contains_exactly(long_debug_expected_fails.iter()))
-        .facts_are_at_least(vec![
-            Fact::new("expected", expected_wrapped.clone()),
-            Fact::new("actual", actual_wrapped.clone()),
-        ]);
-
-        // contains_exactly_in_order
-        assert_that!(check_that!(long_debug_actual.iter())
-            .contains_exactly_in_order(long_debug_expected_fails.iter()))
-        .facts_are_at_least(vec![
-            Fact::new("expected", expected_wrapped.clone()),
-            Fact::new("actual", actual_wrapped.clone()),
-        ]);
-
-        // contains_all_of
-        assert_that!(
-            check_that!(long_debug_actual.iter()).contains_all_of(long_debug_expected_fails.iter())
-        )
-        .facts_are_at_least(vec![
-            Fact::new("expected to contain at least", expected_wrapped.clone()),
-            Fact::new("but was", actual_wrapped.clone()),
-        ]);
-
-        // does_not_contain_any
-        assert_that!(check_that!(long_debug_actual.iter())
-            .does_not_contain_any(long_debug_expected_fails.iter()))
-        .facts_are_at_least(vec![
-            Fact::new("expected to contain none of", expected_wrapped.clone()),
-            Fact::new("but was", actual_wrapped.clone()),
-        ]);
-
-        // contains_all_of_in_order
-        assert_that!(check_that!(long_debug_actual.iter())
-            .contains_all_of_in_order(long_debug_expected_fails.iter()))
-        .facts_are_at_least(vec![
-            Fact::new("expected to contain at least", expected_wrapped.clone()),
-            Fact::new("but was", actual_wrapped.clone()),
-        ]);
-
-        // is_empty
-        assert_that!(check_that!(long_debug_actual.iter()).is_empty())
-            .facts_are_at_least(vec![Fact::new("actual", actual_wrapped.clone())]);
     }
 }
