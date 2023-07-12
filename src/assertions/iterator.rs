@@ -312,8 +312,8 @@ where
             self.new_result()
                 .add_simple_fact("contents match, but order was wrong")
                 .add_splitter()
-                .add_raw_key_values_fact("expected", expected_iter.collect())
-                .add_raw_key_values_fact("actual", self.actual().clone().collect())
+                .add_formatted_values_fact("expected", expected_iter.collect())
+                .add_formatted_values_fact("actual", self.actual().clone().collect())
                 .do_fail()
         } else {
             feed_facts_about_item_diff(
@@ -345,8 +345,8 @@ where
                     format!("{:?}", missing),
                 )
                 .add_splitter()
-                .add_raw_key_values_fact("expected to contain at least", expected_iter.collect())
-                .add_raw_key_values_fact("but was", self.actual().clone().collect())
+                .add_formatted_values_fact("expected to contain at least", expected_iter.collect())
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
                 .do_fail()
@@ -378,8 +378,8 @@ where
                     format!("{:?}", intersection),
                 )
                 .add_splitter()
-                .add_raw_key_values_fact("expected to contain none of", elements.collect())
-                .add_raw_key_values_fact("but was", self.actual().clone().clone().collect())
+                .add_formatted_values_fact("expected to contain none of", elements.collect())
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 .do_fail()
         }
     }
@@ -398,11 +398,11 @@ where
         } else if comparison.contains_all() {
             self.new_result()
                 .add_simple_fact("required elements were all found, but order was wrong")
-                .add_raw_key_values_fact(
+                .add_formatted_values_fact(
                     "expected order for required elements",
                     expected_iter.clone().collect(),
                 )
-                .add_raw_key_values_fact("but was", self.actual().clone().collect())
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 .do_fail()
         } else {
             let missing = comparison.missing;
@@ -414,8 +414,8 @@ where
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
                 .add_splitter()
-                .add_raw_key_values_fact("expected to contain at least", expected_iter.collect())
-                .add_raw_key_values_fact("but was", self.actual().clone().collect())
+                .add_formatted_values_fact("expected to contain at least", expected_iter.collect())
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 .do_fail()
         }
     }
@@ -459,7 +459,7 @@ where
         assertion_result
             .add_simple_fact("expected to be empty")
             .add_splitter()
-            .add_raw_key_values_fact("actual", actual_iter.collect())
+            .add_formatted_values_fact("actual", actual_iter.collect())
             .do_fail()
     }
 }
@@ -497,7 +497,7 @@ where
         assertion_result
             .add_fact("expected to contain", format!("{:?}", element))
             .add_simple_fact("but did not")
-            .add_raw_key_values_fact("though it did contain", actual_iter.clone().collect())
+            .add_formatted_values_fact("though it did contain", actual_iter.clone().collect())
             .do_fail()
     }
 }
@@ -516,7 +516,7 @@ where
         assertion_result
             .add_fact("expected to not contain", format!("{:?}", element))
             .add_simple_fact("but element was found")
-            .add_raw_key_values_fact("though it did contain", actual_iter.clone().collect())
+            .add_formatted_values_fact("though it did contain", actual_iter.clone().collect())
             .do_fail()
     } else {
         assertion_result.do_ok()
@@ -554,8 +554,8 @@ pub(crate) fn feed_facts_about_item_diff<
         result = result.add_splitter();
     }
     result
-        .add_raw_key_values_fact("expected", expected_iter.clone().collect())
-        .add_raw_key_values_fact("actual", actual_iter.clone().collect())
+        .add_formatted_values_fact("expected", expected_iter.clone().collect())
+        .add_formatted_values_fact("actual", actual_iter.clone().collect())
 }
 
 pub(crate) fn check_has_length<I, T, R>(

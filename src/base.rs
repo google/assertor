@@ -309,7 +309,7 @@ impl AssertionResult {
     }
 
     #[inline]
-    pub fn add_raw_key_values_fact<K: Into<String>, V: Debug>(
+    pub fn add_formatted_values_fact<K: Into<String>, V: Debug>(
         mut self,
         key: K,
         values: Vec<V>,
@@ -615,7 +615,7 @@ s  : hort"#
         assert_eq!(
             AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
                 .add_fact("looooong key", "align indent")
-                .add_raw_key_values_fact("kv_key", vec!["short_value"])
+                .add_formatted_values_fact("kv_key", vec!["short_value"])
                 .generate_message(),
             r#"assertion failed: foo.rs:123:456
 looooong key: align indent
@@ -624,7 +624,7 @@ kv_key      : [ "short_value" ]"#
         assert_eq!(
             AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
                 .add_fact("looooong key", "align indent")
-                .add_raw_key_values_fact("kv_key", vec!["short_value", "Very long value is formatted using new lines, this is done to improve output readability."])
+                .add_formatted_values_fact("kv_key", vec!["short_value", "Very long value is formatted using new lines, this is done to improve output readability."])
                 .generate_message(),
             r#"assertion failed: foo.rs:123:456
 looooong key: align indent
@@ -635,14 +635,14 @@ kv_key      : [
         );
         assert_eq!(
             AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
-                .add_raw_key_values_fact("kv_key", vec![1, 2, 3])
+                .add_formatted_values_fact("kv_key", vec![1, 2, 3])
                 .generate_message(),
             r#"assertion failed: foo.rs:123:456
 kv_key: [ 1, 2, 3 ]"#
         );
         assert_eq!(
             AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
-                .add_raw_key_values_fact("kv_key", vec!["1", "2", "3"])
+                .add_formatted_values_fact("kv_key", vec!["1", "2", "3"])
                 .generate_message(),
             r#"assertion failed: foo.rs:123:456
 kv_key: [ "1", "2", "3" ]"#
@@ -654,14 +654,14 @@ kv_key: [ "1", "2", "3" ]"#
         }
         assert_eq!(
             AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
-                .add_raw_key_values_fact(
+                .add_formatted_values_fact(
                     "kv_key_sht",
                     vec![LongOutputData {
                         val: None,
                         nested: vec!["123", "321"]
                     }]
                 )
-                .add_raw_key_values_fact(
+                .add_formatted_values_fact(
                     "kv_key_lng",
                     vec![
                         LongOutputData {

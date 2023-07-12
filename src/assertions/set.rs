@@ -51,9 +51,7 @@ use crate::EqualityAssertion;
 /// ```
 pub trait SetAssertion<'a, S, T, R> {
     /// Checks that the subject has the given length.
-    fn has_length(&self, length: usize) -> R
-    where
-        T: Debug;
+    fn has_length(&self, length: usize) -> R;
 
     /// Checks that the subject is empty.
     fn is_empty(&self) -> R
