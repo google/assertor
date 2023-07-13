@@ -15,7 +15,7 @@
 use std::borrow::Borrow;
 use std::collections::hash_map::Keys;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 
 use crate::assertions::basic::EqualityAssertion;
@@ -395,9 +395,16 @@ fn feed_missing_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
                 ),
             )
             .add_splitter();
-        for (key, value) in &diff.missing {
-            result = result.add_fact("entry was not found", format!("{:?} -> {:?}", key, value));
-        }
+        result = result.add_formatted_values_fact(
+            format!(
+                "{} not found",
+                pluralize(diff.missing.len(), "entry was", "entries were")
+            ),
+            (&diff.missing)
+                .into_iter()
+                .map(|(k, v)| MapEntry::new(k, v))
+                .collect(),
+        );
     }
     (result, has_diffs)
 }
@@ -422,14 +429,35 @@ fn feed_extra_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
                 ),
             )
             .add_splitter();
-        for (key, value) in &diff.extra {
-            result = result.add_fact(
-                "unexpected entry was found",
-                format!("{:?} -> {:?}", key, value),
-            );
-        }
+        result = result.add_formatted_values_fact(
+            format!(
+                "unexpected {} found",
+                pluralize(diff.extra.len(), "entry was", "entries were")
+            ),
+            (&diff.extra)
+                .into_iter()
+                .map(|(k, v)| MapEntry::new(k, v))
+                .collect(),
+        );
     }
     (result, has_diffs)
+}
+
+struct MapEntry<'a, K: Debug, V: Debug> {
+    key: &'a K,
+    value: &'a V,
+}
+
+impl<'a, K: Debug, V: Debug> MapEntry<'a, K, V> {
+    fn new(key: &'a K, value: &'a V) -> MapEntry<'a, K, V> {
+        Self { key, value }
+    }
+}
+
+impl<'a, K: Debug, V: Debug> Debug for MapEntry<'a, K, V> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(format!("{:?} -> {:?}", self.key, self.value).as_str())
+    }
 }
 
 #[cfg(test)]
@@ -633,7 +661,7 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new("entry was not found", r#""not exist" -> "1""#),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" -> "1""#]),
         ]);
 
         // case 2: mismatched entries
@@ -659,7 +687,7 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new("entry was not found", r#""not exist" -> "1""#),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" -> "1""#]),
             Fact::new_splitter(),
             Fact::new(
                 "expected to contain the same entries",
@@ -689,7 +717,7 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new("entry was not found", r#""not exist" -> "1""#),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" -> "1""#]),
         ]);
 
         // case 2: extra key
@@ -706,7 +734,7 @@ mod tests {
                 "but 1 additional entry was found",
             ),
             Fact::new_splitter(),
-            Fact::new("unexpected entry was found", r#""ex" -> "1""#),
+            Fact::new_multi_value_fact("unexpected entry was found", vec![r#""ex" -> "1""#]),
         ]);
 
         // case 3: mismatched entries
@@ -733,14 +761,14 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new("entry was not found", r#""c" -> "2""#),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""c" -> "2""#]),
             Fact::new_splitter(),
             Fact::new(
                 "expected to not contain additional entries",
                 "but 1 additional entry was found",
             ),
             Fact::new_splitter(),
-            Fact::new("unexpected entry was found", r#""b" -> "2""#),
+            Fact::new_multi_value_fact("unexpected entry was found", vec![r#""b" -> "2""#]),
             Fact::new_splitter(),
             Fact::new(
                 "expected to contain the same entries",
