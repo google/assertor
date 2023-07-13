@@ -466,7 +466,7 @@ mod tests {
         assert_that!(check_that!(HashMap::from([("a", "b")])).is_empty()).facts_are(vec![
             Fact::new_simple_fact("expected to be empty"),
             Fact::new_splitter(),
-            Fact::new("actual", "[\"a\"]"),
+            Fact::new_multi_value_fact("actual", vec!["\"a\""]),
         ])
     }
 

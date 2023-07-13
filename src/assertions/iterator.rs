@@ -289,8 +289,7 @@ where
         } else {
             feed_facts_about_item_diff(
                 self.new_result(),
-                comparison.missing,
-                comparison.extra,
+                &comparison,
                 self.actual().clone(),
                 expected_iter,
             )
@@ -313,20 +312,13 @@ where
             self.new_result()
                 .add_simple_fact("contents match, but order was wrong")
                 .add_splitter()
-                .add_fact(
-                    "expected",
-                    format!("{:?}", expected_iter.collect::<Vec<_>>()),
-                )
-                .add_fact(
-                    "actual",
-                    format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
-                )
+                .add_formatted_values_fact("expected", expected_iter.collect())
+                .add_formatted_values_fact("actual", self.actual().clone().collect())
                 .do_fail()
         } else {
             feed_facts_about_item_diff(
                 self.new_result(),
-                comparison.missing,
-                comparison.extra,
+                &comparison,
                 self.actual().clone(),
                 expected_iter,
             )
@@ -352,17 +344,11 @@ where
                     format!("missing ({})", missing.len()),
                     format!("{:?}", missing),
                 )
+                .add_splitter()
+                .add_formatted_values_fact("expected to contain at least", expected_iter.collect())
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
-                .add_splitter()
-                .add_fact(
-                    "expected to contain at least",
-                    format!("{:?}", expected_iter.collect::<Vec<_>>()),
-                )
-                .add_fact(
-                    "but was",
-                    format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
-                )
                 .do_fail()
         }
     }
@@ -392,14 +378,8 @@ where
                     format!("{:?}", intersection),
                 )
                 .add_splitter()
-                .add_fact(
-                    "expected to contain none of",
-                    format!("{:?}", elements.collect::<Vec<_>>()),
-                )
-                .add_fact(
-                    "but was",
-                    format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
-                )
+                .add_formatted_values_fact("expected to contain none of", elements.collect())
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 .do_fail()
         }
     }
@@ -418,14 +398,11 @@ where
         } else if comparison.contains_all() {
             self.new_result()
                 .add_simple_fact("required elements were all found, but order was wrong")
-                .add_fact(
+                .add_formatted_values_fact(
                     "expected order for required elements",
-                    format!("{:?}", expected_iter.collect::<Vec<_>>()),
+                    expected_iter.clone().collect(),
                 )
-                .add_fact(
-                    "but was",
-                    format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
-                )
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 .do_fail()
         } else {
             let missing = comparison.missing;
@@ -437,14 +414,8 @@ where
                 // Idea: implement near_miss_obj
                 // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
                 .add_splitter()
-                .add_fact(
-                    "expected to contain at least",
-                    format!("{:?}", expected_iter.collect::<Vec<_>>()),
-                )
-                .add_fact(
-                    "but was",
-                    format!("{:?}", self.actual().clone().collect::<Vec<_>>()),
-                )
+                .add_formatted_values_fact("expected to contain at least", expected_iter.collect())
+                .add_formatted_values_fact("but was", self.actual().clone().collect())
                 .do_fail()
         }
     }
@@ -488,7 +459,7 @@ where
         assertion_result
             .add_simple_fact("expected to be empty")
             .add_splitter()
-            .add_fact("actual", format!("{:?}", actual_iter.collect::<Vec<_>>()))
+            .add_formatted_values_fact("actual", actual_iter.collect())
             .do_fail()
     }
 }
@@ -526,11 +497,7 @@ where
         assertion_result
             .add_fact("expected to contain", format!("{:?}", element))
             .add_simple_fact("but did not")
-            .add_fact(
-                "though it did contain",
-                // TODO: better error message
-                format!("{:?}", actual_iter.collect::<Vec<_>>()),
-            )
+            .add_formatted_values_fact("though it did contain", actual_iter.clone().collect())
             .do_fail()
     }
 }
@@ -549,11 +516,7 @@ where
         assertion_result
             .add_fact("expected to not contain", format!("{:?}", element))
             .add_simple_fact("but element was found")
-            .add_fact(
-                "though it did contain",
-                // TODO: better error message
-                format!("{:?}", actual_iter.collect::<Vec<_>>()),
-            )
+            .add_formatted_values_fact("though it did contain", actual_iter.clone().collect())
             .do_fail()
     } else {
         assertion_result.do_ok()
@@ -561,30 +524,29 @@ where
 }
 
 pub(crate) fn feed_facts_about_item_diff<
-    T: Debug,
+    T: Debug + PartialEq,
     A: Debug,
     E: Debug,
-    IA: Iterator<Item = A>,
-    IE: Iterator<Item = E>,
+    IA: Iterator<Item = A> + Clone,
+    IE: Iterator<Item = E> + Clone,
 >(
     mut result: AssertionResult,
-    missing: Vec<T>,
-    extra: Vec<T>,
+    comparison: &SequenceComparison<T>,
     actual_iter: IA,
     expected_iter: IE,
 ) -> AssertionResult {
     let mut splitter = false;
-    if !missing.is_empty() {
+    if !comparison.missing.is_empty() {
         result = result.add_fact(
-            format!("missing ({})", missing.len()),
-            format!("{:?}", missing),
+            format!("missing ({})", comparison.missing.len()),
+            format!("{:?}", comparison.missing),
         );
         splitter = true;
     }
-    if !extra.is_empty() {
+    if !comparison.extra.is_empty() {
         result = result.add_fact(
-            format!("unexpected ({})", extra.len()),
-            format!("{:?}", extra),
+            format!("unexpected ({})", comparison.extra.len()),
+            format!("{:?}", comparison.extra),
         );
         splitter = true;
     }
@@ -592,11 +554,8 @@ pub(crate) fn feed_facts_about_item_diff<
         result = result.add_splitter();
     }
     result
-        .add_fact(
-            "expected",
-            format!("{:?}", expected_iter.collect::<Vec<_>>()),
-        )
-        .add_fact("actual", format!("{:?}", actual_iter.collect::<Vec<_>>()))
+        .add_formatted_values_fact("expected", expected_iter.clone().collect())
+        .add_formatted_values_fact("actual", actual_iter.clone().collect())
 }
 
 pub(crate) fn check_has_length<I, T, R>(
@@ -627,6 +586,12 @@ mod tests {
 
     use super::*;
 
+    #[derive(Debug, PartialEq)]
+    struct LongDebugObject {
+        nested: Vec<i32>,
+        plain: String,
+    }
+
     #[test]
     fn contains() {
         assert_that!(vec![1, 2, 3].iter()).contains(&3);
@@ -635,7 +600,7 @@ mod tests {
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains(&10)).facts_are(vec![
             Fact::new("expected to contain", "10"),
             Fact::new_simple_fact("but did not"),
-            Fact::new("though it did contain", "[1, 2, 3]"),
+            Fact::new_multi_value_fact("though it did contain", vec!["1", "2", "3"]),
         ]);
     }
 
@@ -648,8 +613,16 @@ mod tests {
             .facts_are(vec![
                 Fact::new("unexpected (3)", r#"['f', 'o', 'o']"#),
                 Fact::Splitter,
-                Fact::new("expected", r#"['b', 'a', 'z', 'b', 'a', 'r']"#),
-                Fact::new("actual", r#"['f', 'o', 'o', 'b', 'a', 'r', 'b', 'a', 'z']"#),
+                Fact::new_multi_value_fact(
+                    "expected",
+                    vec!["'b'", "'a'", "'z'", "'b'", "'a'", "'r'"],
+                ),
+                Fact::new_multi_value_fact(
+                    "actual",
+                    vec![
+                        "'f'", "'o'", "'o'", "'b'", "'a'", "'r'", "'b'", "'a'", "'z'",
+                    ],
+                ),
             ]);
     }
 
@@ -661,23 +634,23 @@ mod tests {
             .facts_are(vec![
                 Fact::new("missing (1)", "[3]"),
                 Fact::new_splitter(),
-                Fact::new("expected", "[1, 2, 3]"),
-                Fact::new("actual", "[1, 2]"),
+                Fact::new_multi_value_fact("expected", vec!["1", "2", "3"]),
+                Fact::new_multi_value_fact("actual", vec!["1", "2"]),
             ]);
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains_exactly_in_order(vec![1, 2].iter()))
             .facts_are(vec![
                 Fact::new("unexpected (1)", "[3]"),
                 Fact::new_splitter(),
-                Fact::new("expected", "[1, 2]"),
-                Fact::new("actual", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected", vec!["1", "2"]),
+                Fact::new_multi_value_fact("actual", vec!["1", "2", "3"]),
             ]);
         assert_that!(check_that!(vec![1, 2].iter()).contains_exactly_in_order(vec![2, 3].iter()))
             .facts_are(vec![
                 Fact::new("missing (1)", "[3]"),
                 Fact::new("unexpected (1)", "[1]"),
                 Fact::new_splitter(),
-                Fact::new("expected", "[2, 3]"),
-                Fact::new("actual", "[1, 2]"),
+                Fact::new_multi_value_fact("expected", vec!["2", "3"]),
+                Fact::new_multi_value_fact("actual", vec!["1", "2"]),
             ]);
         assert_that!(
             check_that!(vec![2, 1, 3].iter()).contains_exactly_in_order(vec![1, 2, 3].iter())
@@ -685,8 +658,8 @@ mod tests {
         .facts_are(vec![
             Fact::new_simple_fact("contents match, but order was wrong"),
             Fact::new_splitter(),
-            Fact::new("expected", "[1, 2, 3]"),
-            Fact::new("actual", "[2, 1, 3]"),
+            Fact::new_multi_value_fact("expected", vec!["1", "2", "3"]),
+            Fact::new_multi_value_fact("actual", vec!["2", "1", "3"]),
         ])
     }
 
@@ -702,8 +675,8 @@ mod tests {
             .facts_are(vec![
                 Fact::new("missing (1)", "[4]"),
                 Fact::new_splitter(),
-                Fact::new("expected to contain at least", "[3, 4]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected to contain at least", vec!["3", "4"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ])
     }
 
@@ -720,22 +693,22 @@ mod tests {
             .facts_are(vec![
                 Fact::new("missing (1)", "[4]"),
                 Fact::new_splitter(),
-                Fact::new("expected to contain at least", "[3, 4]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected to contain at least", vec!["3", "4"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ]);
         assert_that!(
             check_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![3, 2, 1].iter())
         )
         .facts_are(vec![
             Fact::new_simple_fact("required elements were all found, but order was wrong"),
-            Fact::new("expected order for required elements", "[3, 2, 1]"),
-            Fact::new("but was", "[1, 2, 3]"),
+            Fact::new_multi_value_fact("expected order for required elements", vec!["3", "2", "1"]),
+            Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
         ]);
         assert_that!(check_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![2, 1].iter()))
             .facts_are(vec![
                 Fact::new_simple_fact("required elements were all found, but order was wrong"),
-                Fact::new("expected order for required elements", "[2, 1]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected order for required elements", vec!["2", "1"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ]);
     }
 
@@ -747,7 +720,7 @@ mod tests {
         assert_that!(check_that!(vec![1].iter()).is_empty()).facts_are(vec![
             Fact::new_simple_fact("expected to be empty"),
             Fact::new_splitter(),
-            Fact::new("actual", "[1]"),
+            Fact::new_multi_value_fact("actual", vec!["1"]),
         ]);
     }
 
@@ -773,7 +746,7 @@ mod tests {
         assert_that!(check_that!(vec![1].iter()).does_not_contain(&1)).facts_are(vec![
             Fact::new("expected to not contain", "1"),
             Fact::new_simple_fact("but element was found"),
-            Fact::new("though it did contain", "[1]"),
+            Fact::new_multi_value_fact("though it did contain", vec!["1"]),
         ]);
     }
 
@@ -789,8 +762,8 @@ mod tests {
             .facts_are(vec![
                 Fact::new("found (2)", "[2, 3]"),
                 Fact::new_splitter(),
-                Fact::new("expected to contain none of", "[2, 3]"),
-                Fact::new("but was", "[1, 2, 3]"),
+                Fact::new_multi_value_fact("expected to contain none of", vec!["2", "3"]),
+                Fact::new_multi_value_fact("but was", vec!["1", "2", "3"]),
             ]);
     }
 }

@@ -233,7 +233,7 @@ mod tests {
         assert_that!(check_that!(vec![1, 2, 3]).contains(&10)).facts_are(vec![
             Fact::new("expected to contain", "10"),
             Fact::new_simple_fact("but did not"),
-            Fact::new("though it did contain", r#"[1, 2, 3]"#),
+            Fact::new_multi_value_fact("though it did contain", vec!["1", "2", "3"]),
         ]);
     }
 
@@ -250,8 +250,8 @@ mod tests {
             vec![
                 Fact::new_simple_fact("contents match, but order was wrong"),
                 Fact::new_splitter(),
-                Fact::new("expected", "[1, 2, 3]"),
-                Fact::new("actual", "[2, 1, 3]"),
+                Fact::new_multi_value_fact("expected", vec!["1", "2", "3"]),
+                Fact::new_multi_value_fact("actual", vec!["2", "1", "3"]),
             ],
         )
     }
@@ -264,7 +264,7 @@ mod tests {
         assert_that!(check_that!(vec![1]).is_empty()).facts_are(vec![
             Fact::new_simple_fact("expected to be empty"),
             Fact::new_splitter(),
-            Fact::new("actual", "[1]"),
+            Fact::new_multi_value_fact("actual", vec!["1"]),
         ])
     }
 
