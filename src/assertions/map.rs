@@ -184,9 +184,9 @@ where
             self.new_result().do_ok()
         } else if actual_value.is_none() {
             self.new_result()
-                .add_fact(
+                .add_formatted_fact(
                     "expected key to be mapped to value",
-                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                    MapEntry::new(key.borrow(), value.borrow()),
                 )
                 .add_fact("but key was not found", format!("{:?}", key.borrow()))
                 .add_splitter()
@@ -197,9 +197,9 @@ where
                 .do_fail()
         } else {
             self.new_result()
-                .add_fact(
+                .add_formatted_fact(
                     "expected key to be mapped to value",
-                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                    MapEntry::new(key.borrow(), value.borrow()),
                 )
                 .add_fact(
                     "but key was mapped to a different value",
@@ -224,9 +224,9 @@ where
         let actual_value = self.actual().get(key.borrow());
         if Some(value.borrow()) == actual_value {
             self.new_result()
-                .add_fact(
+                .add_formatted_fact(
                     "expected to not contain entry",
-                    format!("{:?} -> {:?}", key.borrow(), value.borrow()),
+                    MapEntry::new(key.borrow(), value.borrow()),
                 )
                 .add_simple_fact("but entry was found")
                 .add_splitter()
@@ -278,7 +278,7 @@ where
                 .add_simple_fact(format!("found {} unexpected entries", diff.common.len()))
                 .add_splitter();
             for (key, value) in diff.common {
-                result = result.add_simple_fact(format!("{:?} -> {:?}", key, value));
+                result = result.add_simple_formatted_fact(MapEntry::new(key, value));
             }
             return result.do_fail();
         }
@@ -456,7 +456,7 @@ impl<'a, K: Debug, V: Debug> MapEntry<'a, K, V> {
 
 impl<'a, K: Debug, V: Debug> Debug for MapEntry<'a, K, V> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(format!("{:?} -> {:?}", self.key, self.value).as_str())
+        f.write_str(format!("{:?} ⟶ {:?}", self.key, self.value).as_str())
     }
 }
 
@@ -494,7 +494,7 @@ mod tests {
         assert_that!(check_that!(HashMap::from([("a", "b")])).is_empty()).facts_are(vec![
             Fact::new_simple_fact("expected to be empty"),
             Fact::new_splitter(),
-            Fact::new_multi_value_fact("actual", vec!["\"a\""]),
+            Fact::new_multi_value_fact("actual", vec![r#""a""#]),
         ])
     }
 
@@ -569,7 +569,7 @@ mod tests {
         let result = check_that!(map_abc).key_set().contains(&"not exist");
         assert_that!(result).facts_are_at_least(vec![
             Fact::new("value of", "map_abc.keys()"),
-            Fact::new("expected to contain", "\"not exist\""),
+            Fact::new("expected to contain", r#""not exist""#),
             Fact::new_simple_fact("but did not"),
             /* TODO: fix unstable value order.
              * Fact::new("though it did contain", r#"["c", "a", "b"]"#), */
@@ -593,10 +593,7 @@ mod tests {
         // failures: missing key
         let result = check_that!(map_abc).contains_entry("not exist", "1");
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new(
-                "expected key to be mapped to value",
-                r#""not exist" -> "1""#,
-            ),
+            Fact::new("expected key to be mapped to value", r#""not exist" ⟶ "1""#),
             Fact::new("but key was not found", r#""not exist""#),
             Fact::new_splitter(),
         ]);
@@ -608,7 +605,7 @@ mod tests {
         // failures: not equal value
         let result = check_that!(map_abc).contains_entry("a", "2");
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new("expected key to be mapped to value", r#""a" -> "2""#),
+            Fact::new("expected key to be mapped to value", r#""a" ⟶ "2""#),
             Fact::new("but key was mapped to a different value", r#""1""#),
             Fact::new_splitter(),
         ]);
@@ -635,7 +632,7 @@ mod tests {
         // failure
         let result = check_that!(map_abc).does_not_contain_entry("a", "1");
         assert_that!(result).facts_are_at_least(vec![
-            Fact::new("expected to not contain entry", "\"a\" -> \"1\""),
+            Fact::new("expected to not contain entry", r#""a" ⟶ "1""#),
             Fact::new_simple_fact("but entry was found"),
             Fact::new_splitter(),
         ]);
@@ -661,7 +658,7 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" -> "1""#]),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" ⟶ "1""#]),
         ]);
 
         // case 2: mismatched entries
@@ -687,7 +684,7 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" -> "1""#]),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" ⟶ "1""#]),
             Fact::new_splitter(),
             Fact::new(
                 "expected to contain the same entries",
@@ -717,7 +714,7 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" -> "1""#]),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""not exist" ⟶ "1""#]),
         ]);
 
         // case 2: extra key
@@ -734,7 +731,7 @@ mod tests {
                 "but 1 additional entry was found",
             ),
             Fact::new_splitter(),
-            Fact::new_multi_value_fact("unexpected entry was found", vec![r#""ex" -> "1""#]),
+            Fact::new_multi_value_fact("unexpected entry was found", vec![r#""ex" ⟶ "1""#]),
         ]);
 
         // case 3: mismatched entries
@@ -761,14 +758,14 @@ mod tests {
                 "but 1 entry not found",
             ),
             Fact::new_splitter(),
-            Fact::new_multi_value_fact("entry was not found", vec![r#""c" -> "2""#]),
+            Fact::new_multi_value_fact("entry was not found", vec![r#""c" ⟶ "2""#]),
             Fact::new_splitter(),
             Fact::new(
                 "expected to not contain additional entries",
                 "but 1 additional entry was found",
             ),
             Fact::new_splitter(),
-            Fact::new_multi_value_fact("unexpected entry was found", vec![r#""b" -> "2""#]),
+            Fact::new_multi_value_fact("unexpected entry was found", vec![r#""b" ⟶ "2""#]),
             Fact::new_splitter(),
             Fact::new(
                 "expected to contain the same entries",
@@ -804,7 +801,7 @@ mod tests {
             Fact::new_simple_fact("found 2 unexpected entries"),
             Fact::new_splitter(),
         ]);
-        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""c" -> "3""#)]);
-        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""a" -> "1""#)]);
+        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""c" ⟶ "3""#)]);
+        assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""a" ⟶ "1""#)]);
     }
 }
