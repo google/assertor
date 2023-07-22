@@ -308,6 +308,11 @@ impl AssertionResult {
         self
     }
 
+    pub fn add_formatted_fact<K: Into<String>, V: Debug>(mut self, key: K, value: V) -> Self {
+        self.facts.push(Fact::new(key, format!("{:?}", value)));
+        self
+    }
+
     #[inline]
     pub fn add_formatted_values_fact<K: Into<String>, V: Debug>(
         mut self,
@@ -316,6 +321,13 @@ impl AssertionResult {
     ) -> Self {
         let str_values = values.iter().map(|v| format!("{:?}", v)).collect();
         self.facts.push(Fact::new_multi_value_fact(key, str_values));
+        self
+    }
+
+    #[inline]
+    pub fn add_simple_formatted_fact<V: Debug>(mut self, value: V) -> Self {
+        self.facts
+            .push(Fact::new_simple_fact(format!("{:?}", value)));
         self
     }
 
@@ -681,6 +693,24 @@ kv_key_lng: [
   - LongOutputData { val: Some(123456789), nested: ["hello", "long", "debug", "output"] }
   - LongOutputData { val: None, nested: [] }
 ]"#
+        );
+        assert_eq!(
+            AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
+                .add_formatted_fact(
+                    "k",
+                    LongOutputData {
+                        val: Some(1),
+                        nested: vec!["123", "321"]
+                    }
+                )
+                .add_simple_formatted_fact(LongOutputData {
+                    val: Some(2),
+                    nested: vec!["1234"]
+                })
+                .generate_message(),
+            r#"assertion failed: foo.rs:123:456
+k: LongOutputData { val: Some(1), nested: ["123", "321"] }
+LongOutputData { val: Some(2), nested: ["1234"] }"#
         );
     }
 }
