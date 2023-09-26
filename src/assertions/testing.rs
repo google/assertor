@@ -16,7 +16,7 @@ use std::borrow::Borrow;
 use std::collections::HashSet;
 
 use crate::assertions::iterator::IteratorAssertion;
-use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Fact, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Fact, FactStructure, Subject};
 use crate::testing::CheckThatResult;
 
 /// Trait for assertions for assertion messages.
@@ -86,7 +86,12 @@ where
             .facts()
             .iter()
             .flat_map(|fact| match fact {
-                Fact::KeyValue { key: k, value } if k.eq(&key_str) => Some(value),
+                Fact::Structural {
+                    inner: FactStructure::KeyValue { key, value },
+                } if key.eq(&key_str) => match *(value.clone()) {
+                    FactStructure::Value { formatted_value } => Some(formatted_value.to_string()),
+                    _ => None,
+                },
                 _ => None,
             })
             .next()
@@ -111,8 +116,9 @@ where
             .facts()
             .iter()
             .flat_map(|fact| match fact {
-                Fact::KeyValue { key, .. } => Some(key),
-                Fact::KeyValues { key, .. } => Some(key),
+                Fact::Structural {
+                    inner: FactStructure::KeyValue { key, .. },
+                } => Some(key),
                 _ => None,
             })
             .collect();
@@ -165,12 +171,20 @@ mod tests {
     #[test]
     fn facts_are() {
         let failed: CheckThatResult = check_that!("actual").is_same_to("expected");
-        assert_that!(check_that!(failed).facts_are(vec![])).facts_are(vec![
-            Fact::new("value of", "failed.facts()"),
-            Fact::new("unexpected (1)", r#"[Value { value: "not same" }]"#),
+        let rs = check_that!(failed).facts_are(vec![]);
+        println!("{}", format!("{:?}", rs.0.clone().err().unwrap().facts()));
+        assert_that!(rs).facts_are(vec![
+            Fact::new("value of", r#"failed.facts()"#),
+            Fact::new(
+                "unexpected (1)",
+                r#"[Structural { inner: Value { formatted_value: "not same" } }]"#,
+            ),
             Fact::new_splitter(),
             Fact::new_multi_value_fact::<&str, &str>("expected", vec![]),
-            Fact::new_multi_value_fact("actual", vec!["Value { value: \"not same\" }"]),
+            Fact::new_multi_value_fact(
+                "actual",
+                vec![r#"Structural { inner: Value { formatted_value: "not same" } }"#],
+            ),
         ]);
     }
 }

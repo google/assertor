@@ -22,8 +22,9 @@ use crate::assertions::basic::EqualityAssertion;
 use crate::assertions::iterator::{
     check_contains, check_does_not_contain, check_is_empty, check_is_not_empty,
 };
-use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
+use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, FactStructure, Subject};
 use crate::diff::map::{MapComparison, MapValueDiff};
+use crate::Fact;
 
 /// Trait for map assertion.
 ///
@@ -350,19 +351,8 @@ fn feed_different_values_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
                 ),
             )
             .add_splitter();
-        for MapValueDiff {
-            key,
-            actual_value: left_value,
-            expected_value: right_value,
-        } in &diff.different_values
-        {
-            result = result.add_fact(
-                format!("key {:?} was mapped to an unexpected value", key),
-                format!(
-                    "expected value {:?}, but found {:?}",
-                    right_value, left_value
-                ),
-            );
+        if !diff.different_values.is_empty() {
+            result = result.add_complete_fact(create_map_value_diff_fact(&diff.different_values));
         }
     }
     (result, has_diffs)
@@ -441,6 +431,44 @@ fn feed_extra_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
         );
     }
     (result, has_diffs)
+}
+
+pub(crate) fn create_map_value_diff_fact<K: Eq + Hash + Debug, V: Eq + Debug>(
+    value_diffs: &Vec<MapValueDiff<K, V>>,
+) -> Fact {
+    let mut key_diffs = vec![];
+    for MapValueDiff {
+        key,
+        actual_value: left_value,
+        expected_value: right_value,
+    } in value_diffs
+    {
+        key_diffs.push(Box::new(FactStructure::KeyValue {
+            key: format!("{:?}", key),
+            value: Box::new(FactStructure::Nested {
+                inner: vec![
+                    (
+                        "expected".to_string(),
+                        Box::new(FactStructure::Value {
+                            formatted_value: format!("{:?}", right_value),
+                        }),
+                    ),
+                    (
+                        "actual".to_string(),
+                        Box::new(FactStructure::Value {
+                            formatted_value: format!("{:?}", left_value),
+                        }),
+                    ),
+                ],
+            }),
+        }));
+    }
+    Fact::Structural {
+        inner: FactStructure::KeyValue {
+            key: "keys were mapped to an unexpected values".to_string(),
+            value: Box::new(FactStructure::List { values: key_diffs }),
+        },
+    }
 }
 
 struct MapEntry<'a, K: Debug, V: Debug> {
@@ -669,10 +697,11 @@ mod tests {
                 "but found 1 entry that is different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "c" was mapped to an unexpected value"#,
-                r#"expected value "5", but found "3""#,
-            ),
+            create_map_value_diff_fact(&vec![MapValueDiff {
+                key: "c",
+                actual_value: "3",
+                expected_value: "5",
+            }]),
         ]);
 
         // case 3: both mismatched and absent key
@@ -691,10 +720,11 @@ mod tests {
                 "but found 1 entry that is different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "c" was mapped to an unexpected value"#,
-                r#"expected value "5", but found "3""#,
-            ),
+            create_map_value_diff_fact(&vec![MapValueDiff {
+                key: "c",
+                actual_value: "3",
+                expected_value: "5",
+            }]),
         ]);
     }
 
@@ -743,10 +773,11 @@ mod tests {
                 "but found 1 entry that is different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "a" was mapped to an unexpected value"#,
-                r#"expected value "2", but found "1""#,
-            ),
+            create_map_value_diff_fact(&vec![MapValueDiff {
+                key: "a",
+                actual_value: "1",
+                expected_value: "2",
+            }]),
         ]);
 
         // case 4: all mismatches
@@ -772,10 +803,11 @@ mod tests {
                 "but found 1 entry that is different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "a" was mapped to an unexpected value"#,
-                r#"expected value "2", but found "1""#,
-            ),
+            create_map_value_diff_fact(&vec![MapValueDiff {
+                key: "a",
+                actual_value: "1",
+                expected_value: "2",
+            }]),
         ]);
     }
 

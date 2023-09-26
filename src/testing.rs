@@ -49,7 +49,7 @@ macro_rules! check_that {
 }
 
 /// Data structure that contains assertion result and messages.
-pub struct CheckThatResult(Result<(), AssertionResult>);
+pub struct CheckThatResult(pub Result<(), AssertionResult>);
 
 impl AssertionStrategy<CheckThatResult> for AssertionResult {
     fn do_fail(self) -> CheckThatResult {
