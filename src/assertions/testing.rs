@@ -171,7 +171,9 @@ mod tests {
     #[test]
     fn facts_are() {
         let failed: CheckThatResult = check_that!("actual").is_same_to("expected");
-        assert_that!(check_that!(failed).facts_are(vec![])).facts_are(vec![
+        let rs = check_that!(failed).facts_are(vec![]);
+        println!("{}", format!("{:?}", rs.0.clone().err().unwrap().facts()));
+        assert_that!(rs).facts_are(vec![
             Fact::new("value of", r#"failed.facts()"#),
             Fact::new(
                 "unexpected (1)",
