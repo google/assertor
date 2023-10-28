@@ -293,6 +293,8 @@ pub struct AssertionResult {
 
 #[allow(missing_docs)]
 impl AssertionResult {
+    const DEBUG_LENGTH_WRAP_LIMIT: usize = 80;
+
     pub(self) fn new(location: &Option<Location>) -> Self {
         AssertionResult {
             location: location.as_ref().map(|loc| format!("{}", loc)),
@@ -336,12 +338,6 @@ impl AssertionResult {
     }
 
     #[inline]
-    pub fn add_complete_fact(mut self, fact: Fact) -> Self {
-        self.facts.push(fact);
-        self
-    }
-
-    #[inline]
     pub fn add_splitter(mut self) -> Self {
         self.facts.push(Fact::new_splitter());
         self
@@ -359,20 +355,68 @@ impl AssertionResult {
             }
         ));
 
-        let top_level_key_width = self
+        let longest_key_length = self
             .facts
             .iter()
             .flat_map(|fact| match fact {
-                Fact::Structural { inner } => inner.get_longest_key_length(),
+                Fact::KeyValue { key, .. } => Some(key),
+                Fact::KeyValues { key, .. } => Some(key),
                 _ => None,
             })
-            .max();
+            .map(|key| key.len())
+            .max()
+            .unwrap_or(0);
 
         for x in self.facts.iter() {
             match x {
-                Fact::Structural { inner: value } => {
-                    messages.push(value.generate_message(top_level_key_width))
+                Fact::KeyValue { key, value } => messages.push(format!(
+                    "{key:width$}: {value}",
+                    key = key,
+                    value = value,
+                    width = longest_key_length
+                )),
+                Fact::KeyValues { key, values } => {
+                    let values_size = values.len();
+                    let use_multiline_output = values
+                        .clone()
+                        .iter()
+                        .map(|x| format!("{:?}", x).len())
+                        .max_by(|x, y| x.cmp(y))
+                        .unwrap_or(0)
+                        > Self::DEBUG_LENGTH_WRAP_LIMIT;
+                    let formatted_values = format!(
+                        "{}",
+                        if use_multiline_output {
+                            let elements = values
+                                .iter()
+                                .map(|el| format!("  - {}", el))
+                                .collect::<Vec<_>>()
+                                .join("\n");
+                            if values_size > 0 {
+                                format!("[\n{}\n]", elements)
+                            } else {
+                                "[]".to_string()
+                            }
+                        } else {
+                            format!(
+                                "[ {} ]",
+                                values
+                                    .iter()
+                                    .map(|el| format!("{}", el))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            )
+                        }
+                    );
+                    println!("{}", formatted_values);
+                    messages.push(format!(
+                        "{key:width$}: {value}",
+                        key = key,
+                        value = formatted_values,
+                        width = longest_key_length
+                    ));
                 }
+                Fact::Value { value } => messages.push(value.to_string()),
                 Fact::Splitter => messages.push(String::from("---")),
             }
         }
@@ -422,14 +466,35 @@ impl fmt::Display for Location {
 /// A piece of assertion message.
 ///
 /// # Design discussion
+/// - New entry for having elements?
+///     - `KeyValues {key: String, value: Vec<String>}`
 /// - New entry for comparing elements?
 ///     - `Comparison {key: String, actual: Vec<String>, expected: Vec<String>}`
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Fact {
-    Structural {
-        inner: FactStructure,
-    },
+    /// Keyed assertion message
+    ///
+    /// # Example
+    /// ```text
+    /// Fact {key: "expected", value: "foo"}
+    /// Fact {key: "actual", value: "var"}
+    /// ```
+    KeyValue { key: String, value: String },
+    /// Keyed assertion message for multiple values
+    ///
+    /// # Example
+    /// ```text
+    /// Fact {key: "expected", values: vec!["foo", "bar"]}
+    /// ```
+    KeyValues { key: String, values: Vec<String> },
+    /// Single assertion message
+    ///
+    /// # Example
+    /// ```text
+    /// Fact {value: "expected that the vec is empty"}
+    /// ```
+    Value { value: String },
     /// Splitter
     Splitter,
 }
@@ -437,182 +502,24 @@ pub enum Fact {
 #[allow(missing_docs)]
 impl Fact {
     pub fn new<K: Into<String>, V: Into<String>>(key: K, value: V) -> Fact {
-        Fact::Structural {
-            inner: FactStructure::KeyValue {
-                key: key.into(),
-                value: Box::new(FactStructure::Value {
-                    formatted_value: value.into(),
-                }),
-            },
+        Fact::KeyValue {
+            key: key.into(),
+            value: value.into(),
         }
     }
     pub fn new_simple_fact<V: Into<String>>(value: V) -> Fact {
-        Fact::Structural {
-            inner: FactStructure::Value {
-                formatted_value: value.into(),
-            },
+        Fact::Value {
+            value: value.into(),
         }
     }
     pub fn new_multi_value_fact<K: Into<String>, V: Into<String>>(key: K, values: Vec<V>) -> Fact {
-        Fact::Structural {
-            inner: FactStructure::KeyValue {
-                key: key.into(),
-                value: Box::new(FactStructure::List {
-                    values: values
-                        .into_iter()
-                        .map(|v| {
-                            Box::new(FactStructure::Value {
-                                formatted_value: v.into(),
-                            })
-                        })
-                        .collect(),
-                }),
-            },
+        Fact::KeyValues {
+            key: key.into(),
+            values: values.into_iter().map(|v| v.into()).collect(),
         }
     }
     pub fn new_splitter() -> Fact {
         Fact::Splitter
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum FactStructure {
-    /// Single assertion message
-    ///
-    /// # Example
-    /// ```text
-    /// FactStructure::Value { formatted_value: "expected that the vec is empty" }
-    /// ```
-    Value { formatted_value: String },
-    /// Assertion message for multiple values
-    ///
-    /// # Example
-    /// ```text
-    /// FactStructure::List {
-    ///   values: vec![
-    ///     FactStructure::Value { formatted_value: "foo" },
-    ///     FactStructure::Value { formatted_value: "bar" }
-    ///   ]
-    /// }
-    /// ```
-    List { values: Vec<Box<FactStructure>> },
-    /// Keyed assertion message
-    ///
-    /// # Example
-    /// ```text
-    /// FactStructure::KeyValue {key: "expected", value: FactStructure::Value { formatted_value: "foo" }}
-    /// ```
-    KeyValue {
-        key: String,
-        value: Box<FactStructure>,
-    },
-    /// Keyed assertion structured message
-    ///
-    /// # Example
-    /// ```text
-    /// FactStructure::Nested {
-    ///   inner: vec![
-    ///     ("expected", FactStructure::Value { formatted_value: "foo" }),
-    ///     ("actual", FactStructure::Value { formatted_value: "bar" })
-    ///   ]
-    /// }
-    /// ```
-    Nested {
-        inner: Vec<(String, Box<FactStructure>)>,
-    },
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct FactKeyValue();
-
-impl FactStructure {
-    const DEBUG_LENGTH_WRAP_LIMIT: usize = 80;
-
-    fn generate_message(&self, longest_key_length: Option<usize>) -> String {
-        let key_width = longest_key_length.unwrap_or(0);
-        match self {
-            FactStructure::Value { formatted_value } => formatted_value.to_string(),
-            FactStructure::List { values } => {
-                let longest_key_length = self.get_longest_key_length();
-                let values_size = values.len();
-                let use_multiline_output = values
-                    .clone()
-                    .iter()
-                    .map(|x| x.generate_message(longest_key_length).len())
-                    .max_by(|x, y| x.cmp(y))
-                    .unwrap_or(0)
-                    > Self::DEBUG_LENGTH_WRAP_LIMIT;
-                format!(
-                    "{}",
-                    if use_multiline_output {
-                        let elements = values
-                            .iter()
-                            .map(|el| format!("  - {}", el.generate_message(longest_key_length)))
-                            .collect::<Vec<_>>()
-                            .join("\n");
-                        if values_size > 0 {
-                            format!("[\n{}\n]", elements)
-                        } else {
-                            "[]".to_string()
-                        }
-                    } else {
-                        format!(
-                            "[ {} ]",
-                            values
-                                .iter()
-                                .map(|el| format!("{}", el.generate_message(longest_key_length)))
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        )
-                    }
-                )
-            }
-            FactStructure::KeyValue { key, value } => {
-                format!(
-                    "{key:width$}: {value}",
-                    key = key,
-                    value = value.generate_message(None),
-                    width = key_width
-                )
-            }
-            FactStructure::Nested { inner } => {
-                let longest_key_length = self.get_longest_key_length().unwrap_or(0);
-                let formatted_fields = inner
-                    .into_iter()
-                    .map(|(key, value)| {
-                        format!(
-                            "{key:width$}: {value}",
-                            key = key,
-                            value = value.generate_message(None),
-                            width = longest_key_length
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                // TODO: once we have to deal with deeply nested structures, we should start using offset
-                format!("{{ {} }}", formatted_fields)
-            }
-        }
-    }
-
-    fn get_longest_key_length(&self) -> Option<usize> {
-        match self {
-            FactStructure::KeyValue { key, .. } => Some(key.len()),
-            FactStructure::Nested { inner } => inner.iter().map(|(key, _value)| key.len()).max(),
-            FactStructure::List { values } => values
-                .iter()
-                .map(|v| match *(v.clone()) {
-                    FactStructure::KeyValue { key, .. } => key.len(),
-                    FactStructure::Nested { inner } => inner
-                        .iter()
-                        .map(|(key, _value)| key.len())
-                        .max()
-                        .unwrap_or(0),
-                    _ => 0,
-                })
-                .max(),
-            _ => None,
-        }
     }
 }
 
@@ -804,40 +711,6 @@ kv_key_lng: [
             r#"assertion failed: foo.rs:123:456
 k: LongOutputData { val: Some(1), nested: ["123", "321"] }
 LongOutputData { val: Some(2), nested: ["1234"] }"#
-        );
-        assert_eq!(
-            AssertionResult::new(&Some(Location::new("foo.rs", 123, 456)))
-                .add_complete_fact(Fact::Structural {
-                    inner: FactStructure::KeyValue {
-                        key: "top_key".to_string(),
-                        value: Box::new(FactStructure::List {
-                            values: vec![Box::new(FactStructure::KeyValue {
-                                key: "inner_key".to_string(),
-                                value: Box::new(FactStructure::Nested {
-                                    inner: vec![
-                                        (
-                                            "nested_key_1".to_string(),
-                                            Box::new(FactStructure::Value {
-                                                formatted_value: "inner_val_1".to_string(),
-                                            }),
-                                        ),
-                                        (
-                                            "nested_key_loooong_2".to_string(),
-                                            Box::new(FactStructure::Value {
-                                                formatted_value: "inner_val_2".to_string(),
-                                            }),
-                                        ),
-                                    ],
-                                }),
-                            })]
-                        }),
-                    },
-                })
-                .generate_message(),
-            r#"assertion failed: foo.rs:123:456
-top_key: [
-  - inner_key: { nested_key_1        : inner_val_1, nested_key_loooong_2: inner_val_2 }
-]"#
         );
     }
 }
