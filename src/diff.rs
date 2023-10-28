@@ -81,7 +81,8 @@ pub(crate) mod map {
         use crate::diff::map::MapComparison;
         use test_case::test_case;
 
-        //          actual            expected          extra               missing             common               name
+        //          actual            expected          extra               missing
+        // common               name
         #[test_case(vec![],           vec![],           vec![],             vec![],             vec![] ;             "empty maps")]
         #[test_case(vec![("123", 2)], vec![],           vec![(&"123", &2)], vec![],             vec![] ;             "extra entry")]
         #[test_case(vec![],           vec![("123", 2)], vec![],             vec![(&"123", &2)], vec![] ;             "missing entry")]
@@ -239,7 +240,8 @@ pub(crate) mod iter {
         use crate::diff::iter::SequenceOrderComparison;
         use test_case::test_case;
 
-        //          expected                actual         extra             missing       order   name
+        //          expected                actual         extra             missing       order
+        // name
         #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
         #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], false ; "empty left operand")]
         #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       true  ; "extra and relative order")]
@@ -268,7 +270,8 @@ pub(crate) mod iter {
             assert_eq!(expected_order, result.order_preserved);
         }
 
-        //          expected                actual         extra             missing       order   name
+        //          expected                actual         extra             missing       order
+        // name
         #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
         #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], true  ; "empty left operand")]
         #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       false ; "extra and relative order")]

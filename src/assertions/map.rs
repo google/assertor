@@ -345,25 +345,21 @@ fn feed_different_values_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
                     pluralize(
                         diff.different_values.len(),
                         "entry that is",
-                        "entries that are"
+                        "entries that are",
                     )
                 ),
             )
             .add_splitter();
-        for MapValueDiff {
-            key,
-            actual_value: left_value,
-            expected_value: right_value,
-        } in &diff.different_values
-        {
-            result = result.add_fact(
-                format!("key {:?} was mapped to an unexpected value", key),
-                format!(
-                    "expected value {:?}, but found {:?}",
-                    right_value, left_value
-                ),
-            );
-        }
+        let mut ordered_diffs: Vec<_> = diff.different_values.iter().collect();
+        ordered_diffs.sort_by(|d1, d2| format!("{:?}", d1.key).cmp(&format!("{:?}", d2.key)));
+        result = result.add_formatted_values_fact(
+            format!(
+                "{} mapped to unexpected {}",
+                pluralize(diff.different_values.len(), "key was", "keys were"),
+                pluralize(diff.different_values.len(), "value", "values")
+            ),
+            ordered_diffs,
+        );
     }
     (result, has_diffs)
 }
@@ -457,6 +453,18 @@ impl<'a, K: Debug, V: Debug> MapEntry<'a, K, V> {
 impl<'a, K: Debug, V: Debug> Debug for MapEntry<'a, K, V> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(format!("{:?} ⟶ {:?}", self.key, self.value).as_str())
+    }
+}
+
+impl<K: Eq + Hash + Debug, V: PartialEq + Debug> Debug for MapValueDiff<&K, &V> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            format!(
+                r#"{{ key: {:?}, expected: {:?}, actual: {:?} }}"#,
+                self.key, self.actual_value, self.expected_value
+            )
+            .as_str(),
+        )
     }
 }
 
@@ -669,9 +677,9 @@ mod tests {
                 "but found 1 entry that is different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "c" was mapped to an unexpected value"#,
-                r#"expected value "5", but found "3""#,
+            Fact::new_multi_value_fact(
+                r#"key was mapped to unexpected value"#,
+                vec![r#"{ key: "c", expected: "3", actual: "5" }"#],
             ),
         ]);
 
@@ -691,9 +699,9 @@ mod tests {
                 "but found 1 entry that is different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "c" was mapped to an unexpected value"#,
-                r#"expected value "5", but found "3""#,
+            Fact::new_multi_value_fact(
+                r#"key was mapped to unexpected value"#,
+                vec![r#"{ key: "c", expected: "3", actual: "5" }"#],
             ),
         ]);
     }
@@ -735,17 +743,20 @@ mod tests {
         ]);
 
         // case 3: mismatched entries
-        let result =
-            check_that!(HashMap::from([("a", "1")])).contains_at_least(HashMap::from([("a", "2")]));
+        let result = check_that!(HashMap::from([("a", "1"), ("b", "f")]))
+            .contains_at_least(HashMap::from([("a", "2"), ("b", "g")]));
         assert_that!(result).facts_are_at_least(vec![
             Fact::new(
                 "expected to contain the same entries",
-                "but found 1 entry that is different",
+                "but found 2 entries that are different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "a" was mapped to an unexpected value"#,
-                r#"expected value "2", but found "1""#,
+            Fact::new_multi_value_fact(
+                r#"keys were mapped to unexpected values"#,
+                vec![
+                    r#"{ key: "a", expected: "1", actual: "2" }"#,
+                    r#"{ key: "b", expected: "f", actual: "g" }"#,
+                ],
             ),
         ]);
 
@@ -772,9 +783,9 @@ mod tests {
                 "but found 1 entry that is different",
             ),
             Fact::new_splitter(),
-            Fact::new(
-                r#"key "a" was mapped to an unexpected value"#,
-                r#"expected value "2", but found "1""#,
+            Fact::new_multi_value_fact(
+                r#"key was mapped to unexpected value"#,
+                vec![r#"{ key: "a", expected: "1", actual: "2" }"#],
             ),
         ]);
     }
