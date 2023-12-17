@@ -248,7 +248,7 @@ where
         V: Eq + Debug,
     {
         let expected_map = expected.borrow();
-        let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
+        let diff = MapComparison::from_map_like(self.actual(), expected_map, None);
         if diff.common.len() == expected_map.len() {
             return self.new_result().do_ok();
         }
@@ -271,7 +271,7 @@ where
         V: Eq + Debug,
     {
         let expected_map = expected.borrow();
-        let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
+        let diff = MapComparison::from_map_like(self.actual(), expected_map, None);
         if !diff.common.is_empty() {
             let mut result = self
                 .new_result()
@@ -292,7 +292,7 @@ where
         V: Eq + Debug,
     {
         let expected_map = expected.borrow();
-        let diff = MapComparison::from_hash_maps(self.actual(), expected_map);
+        let diff = MapComparison::from_map_like(self.actual(), expected_map, None);
         if diff.extra.is_empty() && diff.missing.is_empty() && diff.different_values.is_empty() {
             return self.new_result().do_ok();
         }

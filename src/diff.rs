@@ -13,7 +13,8 @@
 // limitations under the License.
 
 pub(crate) mod map {
-    use std::collections::HashMap;
+    use crate::diff::iter::{SequenceComparison, SequenceOrderComparison};
+    use std::collections::{BTreeMap, HashMap};
     use std::fmt::Debug;
     use std::hash::Hash;
 
@@ -24,26 +25,93 @@ pub(crate) mod map {
         pub(crate) expected_value: V,
     }
 
-    /// Disjoint representation and commonalities between two Map-like data structures.
+    /// Disjoint and commonalities representation between two Map-like data structures.
     pub(crate) struct MapComparison<K: Eq + Hash + Debug, V: PartialEq + Debug> {
         pub(crate) extra: Vec<(K, V)>,
         pub(crate) missing: Vec<(K, V)>,
         pub(crate) different_values: Vec<MapValueDiff<K, V>>,
         pub(crate) common: Vec<(K, V)>,
+        pub(crate) key_order_comparison: Option<SequenceComparison<K>>,
     }
 
-    // TODO: how would this look like for the `BTreeMap`?
+    pub(crate) trait MapLike {
+        type Key;
+        type Value;
+        fn contains(&self, key: &Self::Key) -> bool;
+        fn get(&self, key: &Self::Key) -> Option<&Self::Value>;
+        fn entries(&self) -> Vec<(&Self::Key, &Self::Value)>;
+        fn keys(&self) -> Vec<&Self::Key> {
+            self.entries().into_iter().map(|(k, _)| k).collect()
+        }
+
+        fn keys_ordered(&self) -> bool;
+    }
+
+    impl<K, V, S> MapLike for HashMap<K, V, S>
+    where
+        K: Eq + Hash,
+        S: std::hash::BuildHasher,
+    {
+        type Key = K;
+        type Value = V;
+
+        fn contains(&self, key: &Self::Key) -> bool {
+            self.contains_key(key)
+        }
+
+        fn get(&self, key: &K) -> Option<&V> {
+            self.get(key)
+        }
+
+        fn entries(&self) -> Vec<(&Self::Key, &Self::Value)> {
+            self.iter().collect()
+        }
+
+        fn keys_ordered(&self) -> bool {
+            false
+        }
+    }
+
+    impl<K, V> MapLike for BTreeMap<K, V>
+    where
+        K: Ord,
+    {
+        type Key = K;
+        type Value = V;
+
+        fn contains(&self, key: &Self::Key) -> bool {
+            self.contains_key(key)
+        }
+
+        fn get(&self, key: &K) -> Option<&V> {
+            self.get(key)
+        }
+
+        fn entries(&self) -> Vec<(&Self::Key, &Self::Value)> {
+            self.iter().collect()
+        }
+
+        fn keys_ordered(&self) -> bool {
+            true
+        }
+    }
+
     impl<K: Eq + Hash + Debug, V: PartialEq + Debug> MapComparison<K, V> {
-        pub(crate) fn from_hash_maps<'a>(
-            actual: &'a HashMap<K, V>,
-            expected: &'a HashMap<K, V>,
-        ) -> MapComparison<&'a K, &'a V> {
+        pub(crate) fn from_map_like<'a, M1, M2>(
+            actual: &'a M1,
+            expected: &'a M2,
+            order_comparison: Option<SequenceOrderComparison>,
+        ) -> MapComparison<&'a K, &'a V>
+        where
+            M1: MapLike<Key = K, Value = V>,
+            M2: MapLike<Key = K, Value = V>,
+        {
             let mut extra = vec![];
             let mut missing = vec![];
             let mut different_values = vec![];
             let mut common = vec![];
 
-            for (key, value) in actual {
+            for (key, value) in actual.entries() {
                 match expected.get(key) {
                     Some(rv) if value == rv => {
                         common.push((key, value));
@@ -59,34 +127,47 @@ pub(crate) mod map {
                 }
             }
 
-            for (key, value) in expected {
-                if !actual.contains_key(key) {
+            for (key, value) in expected.entries() {
+                if !actual.contains(key) {
                     missing.push((key, value));
                 }
             }
+
+            let key_order_comparison = order_comparison
+                .filter(|_| actual.keys_ordered() && expected.keys_ordered())
+                .map(|comparison| {
+                    SequenceComparison::from_iter(
+                        actual.keys().into_iter(),
+                        expected.keys().into_iter(),
+                        comparison,
+                    )
+                });
 
             MapComparison {
                 extra,
                 missing,
                 different_values,
                 common,
+                key_order_comparison,
             }
         }
     }
 
     #[cfg(test)]
     mod tests {
-        use std::collections::HashMap;
+        use std::collections::{BTreeMap, HashMap};
 
+        use crate::diff::iter::SequenceOrderComparison;
         use crate::diff::map::MapComparison;
         use test_case::test_case;
-
-        //          actual            expected          extra               missing             common               name
+        /*
+                    expected          actual            extra               missing             common               name
+        */
         #[test_case(vec![],           vec![],           vec![],             vec![],             vec![] ;             "empty maps")]
         #[test_case(vec![("123", 2)], vec![],           vec![(&"123", &2)], vec![],             vec![] ;             "extra entry")]
         #[test_case(vec![],           vec![("123", 2)], vec![],             vec![(&"123", &2)], vec![] ;             "missing entry")]
         #[test_case(vec![("123", 2)], vec![("123", 2)], vec![],             vec![],             vec![(&"123", &2)] ; "common entry")]
-        fn map_diff(
+        fn unordered_map_diff(
             left: Vec<(&str, i32)>,
             right: Vec<(&str, i32)>,
             extra: Vec<(&&str, &i32)>,
@@ -95,10 +176,90 @@ pub(crate) mod map {
         ) {
             let l: HashMap<&str, i32> = left.into_iter().collect();
             let r: HashMap<&str, i32> = right.into_iter().collect();
-            let result = MapComparison::from_hash_maps(&l, &r);
+            let result = MapComparison::from_map_like(&l, &r, None);
             assert_eq!(common, result.common);
             assert_eq!(extra, result.extra);
             assert_eq!(missing, result.missing);
+        }
+
+        /*
+                    expected                                    actual                        extra             missing common                              order_preserved  order_extra  order_missing  name
+        */
+        #[test_case(vec![(1, 1), (2, 2), (3, 3), (4, 4)],       vec![(1, 1), (2, 2), (3, 3)], vec![(&4, &4)],   vec![], vec![(&1, &1), (&2, &2), (&3, &3)], true,            vec![&4],    vec![]       ; "prefix sub-sequence")]
+        #[test_case(vec![(1, 1), (2, 2), (3, 3), (4, 4)],       vec![(2, 2), (3, 3), (4, 4)], vec![(&1, &1)],   vec![], vec![(&2, &2), (&3, &3), (&4, &4)], true,            vec![&1],    vec![]       ; "suffix sub-sequence")]
+        fn relative_key_order_map_diff(
+            left: Vec<(i32, i32)>,
+            right: Vec<(i32, i32)>,
+            extra: Vec<(&i32, &i32)>,
+            missing: Vec<(&i32, &i32)>,
+            common: Vec<(&i32, &i32)>,
+            order_preserved: bool,
+            order_extra: Vec<&i32>,
+            order_missing: Vec<&i32>,
+        ) {
+            let l: BTreeMap<i32, i32> = left.into_iter().collect();
+            let r: BTreeMap<i32, i32> = right.into_iter().collect();
+            let result =
+                MapComparison::from_map_like(&l, &r, Some(SequenceOrderComparison::Relative));
+            assert_eq!(common, result.common);
+            assert_eq!(extra, result.extra);
+            assert_eq!(missing, result.missing);
+            let order_comparison = result.key_order_comparison.unwrap();
+            assert_eq!(order_preserved, order_comparison.order_preserved);
+            assert_eq!(order_extra, order_comparison.extra);
+            assert_eq!(order_missing, order_comparison.missing);
+        }
+
+        /*
+                    expected                                    actual                        extra             missing common                              order_preserved  order_extra  order_missing  name
+        */
+        #[test_case(vec![(1, 1), (2, 2), (3, 3), (4, 4)],       vec![(1, 1), (2, 2), (3, 3)], vec![(&4, &4)],   vec![], vec![(&1, &1), (&2, &2), (&3, &3)], true,            vec![&4],    vec![]       ; "prefix sub-sequence")]
+        #[test_case(vec![(1, 1), (2, 2), (3, 3), (4, 4)],       vec![(2, 2), (3, 3), (4, 4)], vec![(&1, &1)],   vec![], vec![(&2, &2), (&3, &3), (&4, &4)], false,           vec![&1],    vec![]       ; "suffix sub-sequence")]
+        fn strict_key_order_map_diff(
+            left: Vec<(i32, i32)>,
+            right: Vec<(i32, i32)>,
+            extra: Vec<(&i32, &i32)>,
+            missing: Vec<(&i32, &i32)>,
+            common: Vec<(&i32, &i32)>,
+            order_preserved: bool,
+            order_extra: Vec<&i32>,
+            order_missing: Vec<&i32>,
+        ) {
+            let l: BTreeMap<i32, i32> = left.into_iter().collect();
+            let r: BTreeMap<i32, i32> = right.into_iter().collect();
+            let result =
+                MapComparison::from_map_like(&l, &r, Some(SequenceOrderComparison::Strict));
+            assert_eq!(common, result.common);
+            assert_eq!(extra, result.extra);
+            assert_eq!(missing, result.missing);
+            let order_comparison = result.key_order_comparison.unwrap();
+            assert_eq!(order_preserved, order_comparison.order_preserved);
+            assert_eq!(order_extra, order_comparison.extra);
+            assert_eq!(order_missing, order_comparison.missing);
+        }
+
+        #[test]
+        fn ordered_unordered_key_order_comparison() {
+            let actual = BTreeMap::from([(1, 1)]);
+            let expected = HashMap::from([(2, 2)]);
+            let comparison = MapComparison::from_map_like(
+                &actual,
+                &expected,
+                Some(SequenceOrderComparison::Strict),
+            );
+            assert!(comparison.key_order_comparison.is_none());
+        }
+
+        #[test]
+        fn unordered_ordered_key_order_comparison() {
+            let actual = HashMap::from([(2, 2)]);
+            let expected = BTreeMap::from([(1, 1)]);
+            let comparison = MapComparison::from_map_like(
+                &actual,
+                &expected,
+                Some(SequenceOrderComparison::Strict),
+            );
+            assert!(comparison.key_order_comparison.is_none());
         }
     }
 }
@@ -239,7 +400,9 @@ pub(crate) mod iter {
         use crate::diff::iter::SequenceOrderComparison;
         use test_case::test_case;
 
-        //          expected                actual         extra             missing       order   name
+        /*
+                    expected                actual         extra             missing       order   name
+        */
         #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
         #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], false ; "empty left operand")]
         #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       true  ; "extra and relative order")]
@@ -268,7 +431,8 @@ pub(crate) mod iter {
             assert_eq!(expected_order, result.order_preserved);
         }
 
-        //          expected                actual         extra             missing       order   name
+        //          expected                actual         extra             missing       order
+        // name
         #[test_case(vec![1, 2],             vec![],        vec![&1, &2],     vec![],       true  ; "empty right operand")]
         #[test_case(vec![],                 vec![1, 2],    vec![],           vec![&1, &2], true  ; "empty left operand")]
         #[test_case(vec![1, 2, 3],          vec![1, 3],    vec![&2],         vec![],       false ; "extra and relative order")]
