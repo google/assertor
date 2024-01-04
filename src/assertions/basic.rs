@@ -36,6 +36,7 @@ impl<S: PartialEq + Debug, R> EqualityAssertion<S, R> for Subject<'_, S, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn is_equal_to<B: Borrow<S>>(&self, expected: B) -> R {
         if self.actual().eq(expected.borrow()) {
             self.new_result().do_ok()
@@ -46,6 +47,8 @@ where
                 .do_fail()
         }
     }
+
+    #[track_caller]
     fn is_not_equal_to<B: Borrow<S>>(&self, expected: B) -> R {
         if !self.actual().ne(expected.borrow()) {
             self.new_result().do_fail()
@@ -74,6 +77,7 @@ impl<S: PartialOrd + Debug, R> ComparableAssertion<S, R> for Subject<'_, S, (), 
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn is_at_least<B: Borrow<S>>(&self, expected: B) -> R {
         if self.actual().ge(expected.borrow()) {
             self.new_result().do_ok()
@@ -83,6 +87,7 @@ where
         }
     }
 
+    #[track_caller]
     fn is_at_most<B: Borrow<S>>(&self, expected: B) -> R {
         if self.actual().le(expected.borrow()) {
             self.new_result().do_ok()
@@ -92,6 +97,7 @@ where
         }
     }
 
+    #[track_caller]
     fn is_greater_than<B: Borrow<S>>(&self, expected: B) -> R {
         if self.actual().gt(expected.borrow()) {
             self.new_result().do_ok()
@@ -101,6 +107,7 @@ where
         }
     }
 
+    #[track_caller]
     fn is_less_than<B: Borrow<S>>(&self, expected: B) -> R {
         if self.actual().lt(expected.borrow()) {
             self.new_result().do_ok()

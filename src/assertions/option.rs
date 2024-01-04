@@ -53,6 +53,7 @@ impl<'a, T, R> OptionAssertion<'a, T, R> for Subject<'a, Option<T>, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn is_none(&self) -> R
     where
         T: PartialEq + Debug,
@@ -67,6 +68,7 @@ where
         }
     }
 
+    #[track_caller]
     fn is_some(&self) -> R
     where
         T: PartialEq + Debug,
@@ -81,6 +83,7 @@ where
         }
     }
 
+    #[track_caller]
     fn has_value<B>(&self, expected: B) -> R
     where
         B: Borrow<T>,

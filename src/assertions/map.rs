@@ -133,6 +133,7 @@ impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
             &self.actual().keys().len(),
@@ -142,6 +143,7 @@ where
         .is_equal_to(length)
     }
 
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         K: Debug,
@@ -149,6 +151,7 @@ where
         check_is_empty(self.new_result(), self.actual().keys())
     }
 
+    #[track_caller]
     fn is_not_empty(&self) -> R
     where
         K: Debug,
@@ -156,6 +159,7 @@ where
         check_is_not_empty(self.new_result(), self.actual().keys())
     }
 
+    #[track_caller]
     fn contains_key<BK>(&self, key: BK) -> R
     where
         BK: Borrow<K>,
@@ -164,6 +168,7 @@ where
         check_contains(self.new_result(), self.actual().keys(), &key.borrow())
     }
 
+    #[track_caller]
     fn does_not_contain_key<BK>(&self, key: BK) -> R
     where
         BK: Borrow<K>,
@@ -172,6 +177,7 @@ where
         check_does_not_contain(self.new_result(), self.actual().keys(), &key.borrow())
     }
 
+    #[track_caller]
     fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
     where
         BK: Borrow<K>,
@@ -214,6 +220,7 @@ where
         }
     }
 
+    #[track_caller]
     fn does_not_contain_entry<BK, BV>(&self, key: BK, value: BV) -> R
     where
         BK: Borrow<K>,
@@ -241,6 +248,7 @@ where
         }
     }
 
+    #[track_caller]
     fn contains_at_least<BM>(&self, expected: BM) -> R
     where
         BM: Borrow<HashMap<K, V>>,
@@ -264,6 +272,7 @@ where
             .do_fail()
     }
 
+    #[track_caller]
     fn does_not_contain_any<BM>(&self, expected: BM) -> R
     where
         BM: Borrow<HashMap<K, V>>,
@@ -285,6 +294,7 @@ where
         return self.new_result().do_ok();
     }
 
+    #[track_caller]
     fn contains_exactly<BM>(&self, expected: BM) -> R
     where
         BM: Borrow<HashMap<K, V>>,

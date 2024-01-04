@@ -158,6 +158,7 @@ impl<'a, T, R> VecAssertion<'a, Vec<T>, T, R> for Subject<'a, Vec<T>, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn contains<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -167,6 +168,7 @@ where
             .contains(element.borrow())
     }
 
+    #[track_caller]
     fn does_not_contain<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -176,6 +178,7 @@ where
             .does_not_contain(element.borrow())
     }
 
+    #[track_caller]
     fn contains_exactly<B: Borrow<Vec<T>>>(self, expected_iter: B) -> R
     where
         T: PartialEq + Debug,
@@ -184,6 +187,7 @@ where
             .contains_exactly(expected_iter.borrow().iter())
     }
 
+    #[track_caller]
     fn contains_exactly_in_order<B: Borrow<Vec<T>>>(self, expected_iter: B) -> R
     where
         T: PartialEq + Debug,
@@ -192,6 +196,7 @@ where
             .contains_exactly_in_order(expected_iter.borrow().iter())
     }
 
+    #[track_caller]
     fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
     where
         T: PartialEq + Debug,
@@ -200,6 +205,7 @@ where
             .does_not_contain_any(elements.borrow().iter())
     }
 
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         T: Debug,
@@ -207,6 +213,7 @@ where
         check_is_empty(self.new_result(), self.actual().iter())
     }
 
+    #[track_caller]
     fn is_not_empty(&self) -> R
     where
         T: Debug,
@@ -214,6 +221,7 @@ where
         check_is_not_empty(self.new_result(), self.actual().iter())
     }
 
+    #[track_caller]
     fn has_length(&self, length: usize) -> R {
         check_has_length(self.new_result(), self.actual().iter(), self.expr(), length)
     }

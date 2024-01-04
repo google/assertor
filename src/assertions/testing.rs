@@ -61,6 +61,7 @@ impl<'a, R> CheckThatResultAssertion<'a, R> for Subject<'a, CheckThatResult, (),
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, expected: B) -> R {
         self.new_owned_subject(
             get_assertion_result(self).facts().iter(),
@@ -70,6 +71,7 @@ where
         .contains_exactly_in_order(expected.borrow().iter())
     }
 
+    #[track_caller]
     fn facts_are_at_least<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R {
         self.new_owned_subject(
             get_assertion_result(self).facts().iter(),
@@ -79,6 +81,7 @@ where
         .contains_all_of_in_order(facts.borrow().iter())
     }
 
+    #[track_caller]
     fn fact_value_for_key<I: Into<String>>(&self, key: I) -> Subject<String, (), R> {
         let key_str = key.into();
         let assertion_result = get_assertion_result(self);
@@ -105,6 +108,7 @@ where
         )
     }
 
+    #[track_caller]
     fn fact_keys(&self) -> Subject<HashSet<&String>, (), R> {
         let assertion_result = get_assertion_result(self);
         let keys: HashSet<&String> = assertion_result

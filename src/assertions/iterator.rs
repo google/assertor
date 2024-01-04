@@ -259,6 +259,7 @@ where
     S: Iterator<Item = T> + Clone,
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn contains<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -267,6 +268,7 @@ where
         check_contains(self.new_result(), self.actual().clone(), element.borrow())
     }
 
+    #[track_caller]
     fn does_not_contain<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -275,6 +277,7 @@ where
         check_does_not_contain(self.new_result(), self.actual().clone(), element.borrow())
     }
 
+    #[track_caller]
     fn contains_exactly<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug,
@@ -297,6 +300,7 @@ where
         }
     }
 
+    #[track_caller]
     fn contains_exactly_in_order<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug,
@@ -326,6 +330,7 @@ where
         }
     }
 
+    #[track_caller]
     fn contains_all_of<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug,
@@ -353,6 +358,7 @@ where
         }
     }
 
+    #[track_caller]
     fn does_not_contain_any<EI: Iterator<Item = T> + Clone>(&self, elements: EI) -> R
     where
         T: PartialEq + Debug,
@@ -384,6 +390,7 @@ where
         }
     }
 
+    #[track_caller]
     fn contains_all_of_in_order<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug,
@@ -420,6 +427,7 @@ where
         }
     }
 
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         T: Debug,
@@ -427,6 +435,7 @@ where
         check_is_empty(self.new_result(), self.actual().clone())
     }
 
+    #[track_caller]
     fn is_not_empty(&self) -> R
     where
         T: Debug,
@@ -434,6 +443,7 @@ where
         check_is_not_empty(self.new_result(), self.actual().clone())
     }
 
+    #[track_caller]
     fn has_length(&self, length: usize) -> R
     where
         T: Debug,

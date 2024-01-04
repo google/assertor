@@ -106,6 +106,7 @@ where
         self
     }
 
+    #[track_caller]
     fn is_approx_equal_to<B: Borrow<S>>(&self, expected: B) -> R {
         let diff = (*self.actual() - *expected.borrow()).abs();
         let tolerance: S = self.option().abs_tol + self.option().rel_tol * *expected.borrow();
@@ -144,6 +145,7 @@ where
         )
     }
 
+    #[track_caller]
     fn is_approx_equal_to<B: Borrow<S>>(&self, expected: B) -> R
     where
         FloatTolerance<S>: Default,
