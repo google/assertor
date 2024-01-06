@@ -34,65 +34,84 @@ pub(crate) mod map {
         pub(crate) key_order_comparison: Option<SequenceComparison<K>>,
     }
 
-    pub(crate) trait MapLike {
-        type Key;
-        type Value;
-        fn contains(&self, key: &Self::Key) -> bool;
-        fn get(&self, key: &Self::Key) -> Option<&Self::Value>;
-        fn entries(&self) -> Vec<(&Self::Key, &Self::Value)>;
-        fn keys(&self) -> Vec<&Self::Key> {
-            self.entries().into_iter().map(|(k, _)| k).collect()
+    pub trait MapLike<K: Eq, V> {
+        type It<'a>: Iterator<Item = &'a K>
+        where
+            K: 'a,
+            V: 'a,
+            Self: 'a;
+
+        fn get(&self, k: &K) -> Option<&V>;
+        fn contains(&self, k: &K) -> bool {
+            self.get(k).is_some()
         }
+
+        fn keys_iter<'a>(&'a self) -> Self::It<'a>
+        where
+            K: 'a,
+            V: 'a;
 
         fn keys_ordered(&self) -> bool;
+
+        fn len(&self) -> usize {
+            self.keys_iter().count()
+        }
+
+        fn keys<'a>(&'a self) -> Vec<&'a K>
+        where
+            K: 'a,
+            V: 'a,
+        {
+            self.keys_iter().collect()
+        }
+        fn entries(&self) -> Vec<(&K, &V)>;
     }
 
-    impl<K, V, S> MapLike for HashMap<K, V, S>
-    where
-        K: Eq + Hash,
-        S: std::hash::BuildHasher,
-    {
-        type Key = K;
-        type Value = V;
+    impl<K: Eq + Ord, V> MapLike<K, V> for BTreeMap<K, V> {
+        type It<'a> = std::collections::btree_map::Keys<'a, K, V> where K: 'a, V: 'a;
 
-        fn contains(&self, key: &Self::Key) -> bool {
-            self.contains_key(key)
+        fn get(&self, k: &K) -> Option<&V> {
+            self.get(k)
         }
 
-        fn get(&self, key: &K) -> Option<&V> {
-            self.get(key)
+        fn keys_iter<'a>(&'a self) -> Self::It<'a>
+        where
+            K: 'a,
+            V: 'a,
+        {
+            self.keys()
         }
 
-        fn entries(&self) -> Vec<(&Self::Key, &Self::Value)> {
-            self.iter().collect()
+        fn keys_ordered(&self) -> bool {
+            true
+        }
+
+        fn entries(&self) -> Vec<(&K, &V)> {
+            self.into_iter().collect()
+        }
+    }
+
+    impl<K: Eq + Hash, V> MapLike<K, V> for HashMap<K, V> {
+        type It<'a> = std::collections::hash_map::Keys<'a, K, V> where K: 'a, V: 'a;
+
+        fn get(&self, k: &K) -> Option<&V> {
+            self.get(k)
+        }
+
+        fn keys_iter<'a>(&'a self) -> Self::It<'a>
+        where
+            K: 'a,
+            V: 'a,
+        {
+            self.keys()
         }
 
         fn keys_ordered(&self) -> bool {
             false
         }
-    }
 
-    impl<K, V> MapLike for BTreeMap<K, V>
-    where
-        K: Ord,
-    {
-        type Key = K;
-        type Value = V;
-
-        fn contains(&self, key: &Self::Key) -> bool {
-            self.contains_key(key)
-        }
-
-        fn get(&self, key: &K) -> Option<&V> {
-            self.get(key)
-        }
-
-        fn entries(&self) -> Vec<(&Self::Key, &Self::Value)> {
-            self.iter().collect()
-        }
-
-        fn keys_ordered(&self) -> bool {
-            true
+        fn entries(&self) -> Vec<(&K, &V)> {
+            self.into_iter().collect()
         }
     }
 
@@ -103,8 +122,8 @@ pub(crate) mod map {
             order_comparison: Option<SequenceOrderComparison>,
         ) -> MapComparison<&'a K, &'a V>
         where
-            M1: MapLike<Key = K, Value = V>,
-            M2: MapLike<Key = K, Value = V>,
+            M1: MapLike<K, V>,
+            M2: MapLike<K, V>,
         {
             let mut extra = vec![];
             let mut missing = vec![];
