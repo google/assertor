@@ -46,12 +46,6 @@ where
     AssertionResult: AssertionStrategy<R>,
     ML: MapLike<K, V>,
 {
-    type It: Iterator<Item = &'a K>
-    where
-        K: 'a,
-        V: 'a,
-        Self: 'a;
-
     /// Checks that the subject has the given length.
     fn has_length(&self, length: usize) -> R;
 
@@ -145,8 +139,6 @@ where
     K: 'a + Eq,
     ML: MapLike<K, V>,
 {
-    type It  = ML::It<'a> where K: 'a, V: 'a, Self: 'a;
-
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
             &self.actual().len(),
