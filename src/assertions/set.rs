@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use std::borrow::Borrow;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -75,9 +75,11 @@ pub trait SetAssertion<'a, S, T, R> {
         T: PartialEq + Debug;
 }
 
-impl<'a, T, R> SetAssertion<'a, HashSet<T>, T, R> for Subject<'a, HashSet<T>, (), R>
+impl<'a, T, R, ST> SetAssertion<'a, ST, T, R> for Subject<'a, ST, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
+    T: Eq + Debug,
+    ST: SetLike<T>,
 {
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
@@ -118,6 +120,34 @@ where
     {
         self.new_owned_subject(self.actual().iter(), None, ())
             .does_not_contain_any(elements.borrow().iter())
+    }
+}
+
+trait SetLike<T: Eq> {
+    type It<'a>: Iterator<Item = &'a T> + Clone
+    where
+        T: 'a,
+        Self: 'a;
+    fn iter<'a>(&'a self) -> Self::It<'a>;
+
+    fn len(&self) -> usize {
+        self.iter().count()
+    }
+}
+
+impl<T: Hash + Eq> SetLike<T> for HashSet<T> {
+    type It<'a> = std::collections::hash_set::Iter<'a, T> where T: 'a, Self: 'a;
+
+    fn iter<'a>(&'a self) -> Self::It<'a> {
+        self.into_iter()
+    }
+}
+
+impl<T: Eq + PartialOrd> SetLike<T> for BTreeSet<T> {
+    type It<'a> = std::collections::btree_set::Iter<'a, T> where T: 'a, Self: 'a;
+
+    fn iter<'a>(&'a self) -> Self::It<'a> {
+        self.into_iter()
     }
 }
 
@@ -166,5 +196,16 @@ mod tests {
             .fact_keys()
             .contains(&"though it did contain".to_string());
         // Skip test for value because key order is not stable.
+    }
+
+    #[test]
+    fn works_for_btree_set() {
+        let btree_set = BTreeSet::from(["hello", "world"]);
+        let empty: BTreeSet<&str> = BTreeSet::new();
+        assert_that!(btree_set).has_length(2);
+        assert_that!(empty).is_empty();
+        assert_that!(btree_set).contains("hello");
+        assert_that!(btree_set).does_not_contain("nope");
+        assert_that!(btree_set).does_not_contain_any(vec!["one", "two"]);
     }
 }
