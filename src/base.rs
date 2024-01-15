@@ -276,6 +276,7 @@ pub trait AssertionStrategy<R> {
 }
 
 impl AssertionStrategy<()> for AssertionResult {
+    #[track_caller]
     fn do_fail(self) {
         std::panic::panic_any(self.generate_message());
     }

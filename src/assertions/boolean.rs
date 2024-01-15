@@ -35,6 +35,7 @@ impl<R> BooleanAssertion<R> for Subject<'_, bool, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn is_true(&self) -> R {
         if *self.actual() {
             self.new_result().do_ok()
@@ -46,6 +47,7 @@ where
         }
     }
 
+    #[track_caller]
     fn is_false(&self) -> R {
         if !self.actual() {
             self.new_result().do_ok()

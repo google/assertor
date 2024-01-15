@@ -47,11 +47,13 @@ impl<R> StringAssertion<R> for Subject<'_, String, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn is_same_string_to<E: Into<String>>(&self, expected: E) -> R {
         let subject: Subject<String, (), R> = self.new_subject(self.actual(), None, ());
         EqualityAssertion::is_equal_to(&subject, expected.into())
     }
 
+    #[track_caller]
     fn contains<E: Into<String>>(&self, expected: E) -> R {
         let expected_str = expected.into();
         if self.actual().contains(&expected_str) {
@@ -64,6 +66,7 @@ where
         }
     }
 
+    #[track_caller]
     fn does_not_contain<E: Into<String>>(&self, value: E) -> R {
         let expected_str = value.into();
         if self.actual().contains(&expected_str) {
@@ -76,6 +79,7 @@ where
         }
     }
 
+    #[track_caller]
     fn starts_with<E: Into<String>>(&self, expected: E) -> R {
         let expected_str = expected.into();
         if self.actual().starts_with(&expected_str) {
@@ -88,6 +92,7 @@ where
         }
     }
 
+    #[track_caller]
     fn ends_with<E: Into<String>>(&self, expected: E) -> R {
         let expected_str = expected.into();
         if self.actual().ends_with(&expected_str) {

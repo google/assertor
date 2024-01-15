@@ -53,6 +53,7 @@ impl<R, OK: Debug, ERR: Debug> ResultAssertion<R, OK, ERR> for Subject<'_, Resul
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn is_ok(&self) -> R {
         if self.actual().is_ok() {
             self.new_result().do_ok()
@@ -66,6 +67,7 @@ where
         }
     }
 
+    #[track_caller]
     fn is_err(&self) -> R {
         if self.actual().is_err() {
             self.new_result().do_ok()
@@ -79,6 +81,7 @@ where
         }
     }
 
+    #[track_caller]
     fn has_ok<B: Borrow<OK>>(&self, expected: B) -> R
     where
         OK: PartialEq,
@@ -98,6 +101,7 @@ where
         }
     }
 
+    #[track_caller]
     fn has_err<B: Borrow<ERR>>(&self, expected: B) -> R
     where
         ERR: PartialEq,

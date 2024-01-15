@@ -81,6 +81,7 @@ where
     T: Eq + Debug,
     ST: SetLike<T>,
 {
+    #[track_caller]
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
             &self.actual().len(),
@@ -90,6 +91,7 @@ where
         .is_equal_to(length)
     }
 
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         T: Debug,
@@ -97,6 +99,7 @@ where
         check_is_empty(self.new_result(), self.actual().iter())
     }
 
+    #[track_caller]
     fn contains<B: Borrow<T>>(&self, expected: B) -> R
     where
         T: PartialEq + Eq + Debug + Hash,
@@ -105,6 +108,7 @@ where
             .contains(expected.borrow())
     }
 
+    #[track_caller]
     fn does_not_contain<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -114,6 +118,7 @@ where
             .does_not_contain(element.borrow())
     }
 
+    #[track_caller]
     fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
     where
         T: PartialEq + Debug,
