@@ -13,8 +13,6 @@
 // limitations under the License.
 
 use std::borrow::Borrow;
-use std::collections::hash_map::Keys;
-use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 
@@ -23,7 +21,7 @@ use crate::assertions::iterator::{
     check_contains, check_does_not_contain, check_is_empty, check_is_not_empty,
 };
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
-use crate::diff::map::{MapComparison, MapValueDiff};
+use crate::diff::map::{MapComparison, MapLike, MapValueDiff};
 
 /// Trait for map assertion.
 ///
@@ -43,9 +41,10 @@ use crate::diff::map::{MapComparison, MapValueDiff};
 /// assert_that!(map).contains_key("one");
 /// assert_that!(map).key_set().contains_exactly(vec!["three","two","one"].iter());
 /// ```
-pub trait MapAssertion<'a, K, V, R>
+pub trait MapAssertion<'a, K: 'a + Eq, V, ML, R>
 where
     AssertionResult: AssertionStrategy<R>,
+    ML: MapLike<K, V>,
 {
     /// Checks that the subject has the given length.
     fn has_length(&self, length: usize) -> R;
@@ -89,25 +88,28 @@ where
         V: Eq + Debug;
 
     /// Checks that the subject contains all entries from `expected`.
-    fn contains_at_least<BM>(&self, expected: BM) -> R
+    fn contains_at_least<BM: 'a, OML: 'a>(&self, expected: BM) -> R
     where
-        BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
-        V: Eq + Debug;
+        V: Eq + Debug,
+        OML: MapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a;
 
     /// Checks that the subject does not contain any entries from `expected`.
-    fn does_not_contain_any<BM>(&self, expected: BM) -> R
+    fn does_not_contain_any<BM: 'a, OML: 'a>(&self, expected: BM) -> R
     where
-        BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
-        V: Eq + Debug;
+        V: Eq + Debug,
+        OML: MapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a;
 
     /// Checks that the subject contains only entries from `expected`.
-    fn contains_exactly<BM>(&self, expected: BM) -> R
+    fn contains_exactly<BM, OML>(&self, expected: BM) -> R
     where
-        BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
-        V: Eq + Debug;
+        V: Eq + Debug,
+        OML: MapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a;
 
     /// Returns a new subject which is an key set of the subject and which implements
     /// [`crate::IteratorAssertion`].
@@ -126,16 +128,20 @@ where
     /// assert_that!(map).key_set().contains(&"one");
     /// assert_that!(map).key_set().contains_exactly(vec!["three","two","one"].iter());
     /// assert_that!(map).key_set().contains_all_of(vec!["one", "two"].iter());
-    fn key_set(&self) -> Subject<Keys<K, V>, (), R>;
+    fn key_set<'b>(&'b self) -> Subject<ML::It<'b>, (), R>
+    where
+        K: 'b;
 }
 
-impl<'a, K, V, R> MapAssertion<'a, K, V, R> for Subject<'a, HashMap<K, V>, (), R>
+impl<'a, K, V, ML, R> MapAssertion<'a, K, V, ML, R> for Subject<'a, ML, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
+    K: 'a + Eq,
+    ML: MapLike<K, V>,
 {
     fn has_length(&self, length: usize) -> R {
         self.new_subject(
-            &self.actual().keys().len(),
+            &self.actual().len(),
             Some(format!("{}.len()", self.description_or_expr())),
             (),
         )
@@ -146,14 +152,14 @@ where
     where
         K: Debug,
     {
-        check_is_empty(self.new_result(), self.actual().keys())
+        check_is_empty(self.new_result(), self.actual().keys().into_iter())
     }
 
     fn is_not_empty(&self) -> R
     where
         K: Debug,
     {
-        check_is_not_empty(self.new_result(), self.actual().keys())
+        check_is_not_empty(self.new_result(), self.actual().keys().into_iter())
     }
 
     fn contains_key<BK>(&self, key: BK) -> R
@@ -161,7 +167,11 @@ where
         BK: Borrow<K>,
         K: Eq + Hash + Debug,
     {
-        check_contains(self.new_result(), self.actual().keys(), &key.borrow())
+        check_contains(
+            self.new_result(),
+            self.actual().keys().into_iter(),
+            &key.borrow(),
+        )
     }
 
     fn does_not_contain_key<BK>(&self, key: BK) -> R
@@ -169,7 +179,11 @@ where
         BK: Borrow<K>,
         K: Eq + Hash + Debug,
     {
-        check_does_not_contain(self.new_result(), self.actual().keys(), &key.borrow())
+        check_does_not_contain(
+            self.new_result(),
+            self.actual().keys().into_iter(),
+            &key.borrow(),
+        )
     }
 
     fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
@@ -192,7 +206,7 @@ where
                 .add_splitter()
                 .add_fact(
                     "though it did contain keys",
-                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                    format!("{:?}", self.actual().keys()),
                 )
                 .do_fail()
         } else {
@@ -208,7 +222,7 @@ where
                 .add_splitter()
                 .add_fact(
                     "though it did contain keys",
-                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                    format!("{:?}", self.actual().keys()),
                 )
                 .do_fail()
         }
@@ -233,7 +247,7 @@ where
                 // TODO: add better representation of the map
                 .add_fact(
                     "though it did contain",
-                    format!("{:?}", self.actual().keys().collect::<Vec<_>>()),
+                    format!("{:?}", self.actual().keys()),
                 )
                 .do_fail()
         } else {
@@ -241,11 +255,12 @@ where
         }
     }
 
-    fn contains_at_least<BM>(&self, expected: BM) -> R
+    fn contains_at_least<BM, OML>(&self, expected: BM) -> R
     where
-        BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
         V: Eq + Debug,
+        OML: MapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a,
     {
         let expected_map = expected.borrow();
         let diff = MapComparison::from_map_like(self.actual(), expected_map, None);
@@ -264,11 +279,12 @@ where
             .do_fail()
     }
 
-    fn does_not_contain_any<BM>(&self, expected: BM) -> R
+    fn does_not_contain_any<BM: 'a, OML: 'a>(&self, expected: BM) -> R
     where
-        BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
         V: Eq + Debug,
+        OML: MapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a,
     {
         let expected_map = expected.borrow();
         let diff = MapComparison::from_map_like(self.actual(), expected_map, None);
@@ -285,11 +301,12 @@ where
         return self.new_result().do_ok();
     }
 
-    fn contains_exactly<BM>(&self, expected: BM) -> R
+    fn contains_exactly<BM, OML>(&self, expected: BM) -> R
     where
-        BM: Borrow<HashMap<K, V>>,
         K: Eq + Hash + Debug,
         V: Eq + Debug,
+        OML: MapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a,
     {
         let expected_map = expected.borrow();
         let diff = MapComparison::from_map_like(self.actual(), expected_map, None);
@@ -309,9 +326,12 @@ where
             .do_fail()
     }
 
-    fn key_set(&self) -> Subject<Keys<K, V>, (), R> {
+    fn key_set<'b>(&'b self) -> Subject<ML::It<'b>, (), R>
+    where
+        K: 'b,
+    {
         self.new_owned_subject(
-            self.actual().keys(),
+            self.actual().keys_iter(),
             Some(format!("{}.keys()", self.description_or_expr())),
             (),
         )
@@ -472,6 +492,7 @@ impl<K: Eq + Hash + Debug, V: PartialEq + Debug> Debug for MapValueDiff<&K, &V> 
 mod tests {
     use crate::testing::*;
     use crate::{assert_that, check_that, Fact, IteratorAssertion, SetAssertion};
+    use std::collections::{BTreeMap, HashMap};
 
     use super::*;
 
@@ -814,5 +835,27 @@ mod tests {
         ]);
         assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""c" ⟶ "3""#)]);
         assert_that!(result).facts_are_at_least(vec![Fact::new_simple_fact(r#""a" ⟶ "1""#)]);
+    }
+
+    #[test]
+    fn supports_any_map() {
+        let empty: BTreeMap<String, String> = BTreeMap::new();
+        let tree_map = BTreeMap::from([("hello", "sorted_map"), ("world", "in")]);
+        assert_that!(tree_map).has_length(2);
+        assert_that!(empty).is_empty();
+        assert_that!(tree_map).is_not_empty();
+        assert_that!(tree_map).contains_key("hello");
+        assert_that!(tree_map).does_not_contain_key(&"key");
+        assert_that!(tree_map).key_set().contains(&"hello");
+        assert_that!(tree_map).contains_entry("hello", "sorted_map");
+        assert_that!(tree_map).does_not_contain_entry("hello", "other");
+        assert_that!(tree_map).contains_at_least(BTreeMap::from([("world", "in")]));
+        assert_that!(tree_map).contains_at_least(HashMap::from([("world", "in")]));
+        assert_that!(tree_map)
+            .contains_exactly(BTreeMap::from([("hello", "sorted_map"), ("world", "in")]));
+        assert_that!(tree_map)
+            .contains_exactly(HashMap::from([("hello", "sorted_map"), ("world", "in")]));
+        assert_that!(tree_map).does_not_contain_any(BTreeMap::from([("world", "nope")]));
+        assert_that!(tree_map).does_not_contain_any(HashMap::from([("world", "nope")]));
     }
 }
