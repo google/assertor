@@ -123,7 +123,98 @@ where
     }
 }
 
-trait SetLike<T: Eq> {
+/// Trait for sorted set assertions.
+///
+/// # Example
+/// ```
+/// use assertor::*;
+/// use std::collections::BTreeSet;
+///
+/// let mut set = BTreeSet::new();
+/// assert_that!(set).is_empty();
+///
+/// set.insert("a");
+/// set.insert("b");
+/// set.insert("c");
+///
+/// assert_that!(set).contains("a");
+/// assert_that!(set).has_length(3);
+/// assert_that!(set).contains_all_of_in_order(BTreeSet::from(["b", "c"]));
+/// ```
+/// ```should_panic
+/// use assertor::*;
+/// use std::collections::BTreeSet;
+///
+/// let mut set = BTreeSet::new();
+/// set.insert("a");
+/// assert_that!(set).contains("z");
+/// // expected to contain  : "z"
+/// // but did not
+/// // though it did contain: ["a"]
+/// ```
+pub trait OrderedSetAssertion<'a, ST, T, R>: SetAssertion<'a, ST, T, R>
+where
+    AssertionResult: AssertionStrategy<R>,
+    T: PartialOrd + Eq + Debug,
+    ST: OrderedSetLike<T>,
+{
+    /// Checks that the subject contains at least all elements of `expected` in the same order.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// use std::collections::BTreeSet;
+    /// assert_that!(BTreeSet::from([1, 2, 3])).contains_all_of_in_order(BTreeSet::from([1, 2, 3]));
+    /// ```
+    fn contains_all_of_in_order<OSA, OS>(&self, expected: OSA) -> R
+    where
+        T: PartialOrd + Eq + Debug,
+        OS: OrderedSetLike<T>,
+        OSA: Borrow<OS>;
+
+    /// Checks that the subject exactly contains elements of `expected` in the same order.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    /// use std::collections::BTreeSet;
+    /// assert_that!(BTreeSet::from([1, 2, 3])).contains_exactly_in_order(BTreeSet::from([1, 2, 3]));
+    /// ```
+    fn contains_exactly_in_order<OSA, OS>(&self, expected: OSA) -> R
+    where
+        T: PartialOrd + Eq + Debug,
+        OS: OrderedSetLike<T>,
+        OSA: Borrow<OS>;
+}
+
+impl<'a, T, R, ST> OrderedSetAssertion<'a, ST, T, R> for Subject<'a, ST, (), R>
+where
+    AssertionResult: AssertionStrategy<R>,
+    T: Eq + PartialOrd + Debug,
+    ST: OrderedSetLike<T>,
+{
+    fn contains_all_of_in_order<OSA, OS>(&self, expected: OSA) -> R
+    where
+        T: PartialOrd + Eq + Debug,
+        OS: OrderedSetLike<T>,
+        OSA: Borrow<OS>,
+    {
+        self.new_owned_subject(self.actual().iter(), None, ())
+            .contains_all_of_in_order(expected.borrow().iter())
+    }
+
+    fn contains_exactly_in_order<OSA, OS>(&self, expected: OSA) -> R
+    where
+        T: PartialOrd + Eq + Debug,
+        OS: OrderedSetLike<T>,
+        OSA: Borrow<OS>,
+    {
+        self.new_owned_subject(self.actual().iter(), None, ())
+            .contains_exactly_in_order(expected.borrow().iter())
+    }
+}
+
+pub trait SetLike<T: Eq> {
     type It<'a>: Iterator<Item = &'a T> + Clone
     where
         T: 'a,
@@ -134,6 +225,8 @@ trait SetLike<T: Eq> {
         self.iter().count()
     }
 }
+
+pub trait OrderedSetLike<T: PartialOrd + Eq>: SetLike<T> {}
 
 impl<T: Hash + Eq> SetLike<T> for HashSet<T> {
     type It<'a> = std::collections::hash_set::Iter<'a, T> where T: 'a, Self: 'a;
@@ -150,6 +243,8 @@ impl<T: Eq + PartialOrd> SetLike<T> for BTreeSet<T> {
         self.into_iter()
     }
 }
+
+impl<T: PartialOrd + Eq> OrderedSetLike<T> for BTreeSet<T> {}
 
 #[cfg(test)]
 mod tests {
@@ -207,5 +302,20 @@ mod tests {
         assert_that!(btree_set).contains("hello");
         assert_that!(btree_set).does_not_contain("nope");
         assert_that!(btree_set).does_not_contain_any(vec!["one", "two"]);
+    }
+
+    #[test]
+    fn contains_all_of_in_order() {
+        assert_that!(BTreeSet::from([1, 2, 3])).contains_all_of_in_order(BTreeSet::from([]));
+        assert_that!(BTreeSet::from([1, 2, 3])).contains_all_of_in_order(BTreeSet::from([1, 2]));
+        assert_that!(BTreeSet::from([1, 2, 3])).contains_all_of_in_order(BTreeSet::from([2, 3]));
+        assert_that!(BTreeSet::from([1, 2, 3])).contains_all_of_in_order(BTreeSet::from([1, 3]));
+        assert_that!(BTreeSet::from([1, 2, 3])).contains_all_of_in_order(BTreeSet::from([1, 2, 3]));
+    }
+
+    #[test]
+    fn contains_exactly_in_order() {
+        assert_that!(BTreeSet::from([1, 2, 3]))
+            .contains_exactly_in_order(BTreeSet::from([1, 2, 3]));
     }
 }
