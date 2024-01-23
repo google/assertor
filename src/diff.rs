@@ -19,14 +19,14 @@ pub(crate) mod map {
     use std::hash::Hash;
 
     /// Difference for a single key in a Map-like data structure.
-    pub(crate) struct MapValueDiff<K: Eq + Hash + Debug, V: PartialEq + Debug> {
+    pub(crate) struct MapValueDiff<K: Debug, V: PartialEq + Debug> {
         pub(crate) key: K,
         pub(crate) actual_value: V,
         pub(crate) expected_value: V,
     }
 
     /// Disjoint and commonalities representation between two Map-like data structures.
-    pub(crate) struct MapComparison<K: Eq + Hash + Debug, V: PartialEq + Debug> {
+    pub(crate) struct MapComparison<K: Eq + Debug, V: PartialEq + Debug> {
         pub(crate) extra: Vec<(K, V)>,
         pub(crate) missing: Vec<(K, V)>,
         pub(crate) different_values: Vec<MapValueDiff<K, V>>,
@@ -67,6 +67,8 @@ pub(crate) mod map {
         fn entries(&self) -> Vec<(&K, &V)>;
     }
 
+    pub trait OrderedMapLike<K: Eq + Ord, V>: MapLike<K, V> {}
+
     impl<K: Eq + Ord, V> MapLike<K, V> for BTreeMap<K, V> {
         type It<'a> = std::collections::btree_map::Keys<'a, K, V> where K: 'a, V: 'a;
 
@@ -90,6 +92,8 @@ pub(crate) mod map {
             self.into_iter().collect()
         }
     }
+
+    impl<K: Eq + Ord, V> OrderedMapLike<K, V> for BTreeMap<K, V> {}
 
     impl<K: Eq + Hash, V> MapLike<K, V> for HashMap<K, V> {
         type It<'a> = std::collections::hash_map::Keys<'a, K, V> where K: 'a, V: 'a;
@@ -115,7 +119,7 @@ pub(crate) mod map {
         }
     }
 
-    impl<K: Eq + Hash + Debug, V: PartialEq + Debug> MapComparison<K, V> {
+    impl<K: Eq + Debug, V: PartialEq + Debug> MapComparison<K, V> {
         pub(crate) fn from_map_like<'a, M1, M2>(
             actual: &'a M1,
             expected: &'a M2,

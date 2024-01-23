@@ -306,23 +306,16 @@ where
             expected_iter.clone(),
             SequenceOrderComparison::Strict,
         );
-        if comparison.contains_exactly() && comparison.order_preserved {
-            self.new_result().do_ok()
-        } else if comparison.contains_exactly() && !comparison.order_preserved {
-            self.new_result()
-                .add_simple_fact("contents match, but order was wrong")
-                .add_splitter()
-                .add_formatted_values_fact("expected", expected_iter.collect())
-                .add_formatted_values_fact("actual", self.actual().clone().collect())
-                .do_fail()
+        let (result, ok) = check_contains_exactly_in_order(
+            comparison,
+            self.actual().clone(),
+            expected_iter,
+            self.new_result(),
+        );
+        if ok {
+            result.do_ok()
         } else {
-            feed_facts_about_item_diff(
-                self.new_result(),
-                &comparison,
-                self.actual().clone(),
-                expected_iter,
-            )
-            .do_fail()
+            result.do_fail()
         }
     }
 
@@ -393,30 +386,16 @@ where
             expected_iter.clone(),
             SequenceOrderComparison::Relative,
         );
-        if comparison.contains_all() && comparison.order_preserved {
-            self.new_result().do_ok()
-        } else if comparison.contains_all() {
-            self.new_result()
-                .add_simple_fact("required elements were all found, but order was wrong")
-                .add_formatted_values_fact(
-                    "expected order for required elements",
-                    expected_iter.clone().collect(),
-                )
-                .add_formatted_values_fact("but was", self.actual().clone().collect())
-                .do_fail()
+        let (result, ok) = check_contains_all_of_in_order(
+            comparison,
+            self.actual().clone(),
+            expected_iter,
+            self.new_result(),
+        );
+        if ok {
+            result.do_ok()
         } else {
-            let missing = comparison.missing;
-            self.new_result()
-                .add_fact(
-                    format!("missing ({})", missing.len()),
-                    format!("{:?}", missing),
-                )
-                // Idea: implement near_miss_obj
-                // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
-                .add_splitter()
-                .add_formatted_values_fact("expected to contain at least", expected_iter.collect())
-                .add_formatted_values_fact("but was", self.actual().clone().collect())
-                .do_fail()
+            result.do_fail()
         }
     }
 
@@ -520,6 +499,80 @@ where
             .do_fail()
     } else {
         assertion_result.do_ok()
+    }
+}
+
+pub(crate) fn check_contains_exactly_in_order<T, I, EI, R>(
+    comparison: SequenceComparison<T>,
+    actual: I,
+    expected_iter: EI,
+    assertion_result: AssertionResult,
+) -> (AssertionResult, bool)
+where
+    AssertionResult: AssertionStrategy<R>,
+    T: PartialEq + Debug,
+    EI: Iterator<Item = T> + Clone,
+    I: Iterator<Item = T> + Clone,
+{
+    if comparison.contains_exactly() && comparison.order_preserved {
+        (assertion_result, true)
+    } else if comparison.contains_exactly() && !comparison.order_preserved {
+        (
+            assertion_result
+                .add_simple_fact("contents match, but order was wrong")
+                .add_splitter()
+                .add_formatted_values_fact("expected", expected_iter.collect())
+                .add_formatted_values_fact("actual", actual.collect()),
+            false,
+        )
+    } else {
+        (
+            feed_facts_about_item_diff(assertion_result, &comparison, actual, expected_iter),
+            false,
+        )
+    }
+}
+
+pub(crate) fn check_contains_all_of_in_order<T, I, EI, R>(
+    comparison: SequenceComparison<T>,
+    actual: I,
+    expected_iter: EI,
+    assertion_result: AssertionResult,
+) -> (AssertionResult, bool)
+where
+    AssertionResult: AssertionStrategy<R>,
+    T: PartialEq + Debug,
+    EI: Iterator<Item = T> + Clone,
+    I: Iterator<Item = T> + Clone,
+{
+    if comparison.contains_all() && comparison.order_preserved {
+        (assertion_result, true)
+    } else if comparison.contains_all() {
+        (
+            assertion_result
+                .add_simple_fact("required elements were all found, but order was wrong")
+                .add_formatted_values_fact(
+                    "expected order for required elements",
+                    expected_iter.clone().collect(),
+                )
+                .add_formatted_values_fact("but was", actual.collect()),
+            false,
+        )
+    } else {
+        let missing = comparison.missing;
+        (
+            assertion_result
+                .add_fact(
+                    format!("missing ({})", missing.len()),
+                    format!("{:?}", missing),
+                )
+                // Idea: implement near_miss_obj
+                // .add_fact("tough it did contain", format!("{:?}", near_miss_obj))
+                .add_splitter()
+                .add_formatted_values_fact("expected to contain at least", expected_iter.collect())
+                .add_formatted_values_fact("but was", actual.collect()),
+            false,
+        )
     }
 }
 
@@ -681,7 +734,7 @@ mod tests {
     }
 
     #[test]
-    fn contains_at_least_in_order() {
+    fn contains_all_of_in_order() {
         assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![].iter());
         assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![1, 2].iter());
         assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![2, 3].iter());

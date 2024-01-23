@@ -21,7 +21,8 @@ use crate::assertions::iterator::{
     check_contains, check_does_not_contain, check_is_empty, check_is_not_empty,
 };
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
-use crate::diff::map::{MapComparison, MapLike, MapValueDiff};
+use crate::diff::iter::SequenceOrderComparison;
+use crate::diff::map::{MapComparison, MapLike, MapValueDiff, OrderedMapLike};
 
 /// Trait for map assertion.
 ///
@@ -131,6 +132,48 @@ where
     fn key_set<'b>(&'b self) -> Subject<ML::It<'b>, (), R>
     where
         K: 'b;
+}
+
+/// Trait for ordered map assertion.
+///
+/// # Example
+/// ```
+/// use std::collections::BTreeMap;
+/// use assertor::*;
+///
+/// let mut map = BTreeMap::new();
+/// assert_that!(map).is_empty();
+///
+/// map.insert("one", 1);
+/// map.insert("two", 2);
+/// map.insert("three", 3);
+///
+/// assert_that!(map).has_length(3);
+/// assert_that!(map).contains_key("one");
+/// assert_that!(map).key_set().contains_exactly(vec!["three","two","one"].iter());
+/// assert_that!(map).contains_all_of_in_order(BTreeMap::from([("one", 1), ("three", 3)]));
+/// ```
+pub trait OrderedMapAssertion<'a, K: 'a + Ord + Eq, V, ML, R>:
+    MapAssertion<'a, K, V, ML, R>
+where
+    AssertionResult: AssertionStrategy<R>,
+    ML: OrderedMapLike<K, V>,
+{
+    /// Checks that the subject exactly contains `expected` in the same order.
+    fn contains_exactly_in_order<BM, OML>(&self, expected: BM) -> R
+    where
+        K: Eq + Ord + Debug,
+        V: Eq + Debug,
+        OML: OrderedMapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a;
+
+    /// Checks that the subject contains at least all elements of `expected` in the same order.
+    fn contains_all_of_in_order<BM, OML>(&self, expected: BM) -> R
+    where
+        K: Eq + Ord + Debug,
+        V: Eq + Debug,
+        OML: OrderedMapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a;
 }
 
 impl<'a, K, V, ML, R> MapAssertion<'a, K, V, ML, R> for Subject<'a, ML, (), R>
@@ -338,6 +381,71 @@ where
     }
 }
 
+impl<'a, K, V, ML, R> OrderedMapAssertion<'a, K, V, ML, R> for Subject<'a, ML, (), R>
+where
+    AssertionResult: AssertionStrategy<R>,
+    K: 'a + Eq + Ord,
+    ML: OrderedMapLike<K, V>,
+{
+    fn contains_exactly_in_order<BM, OML>(&self, expected: BM) -> R
+    where
+        K: Eq + Ord + Debug,
+        V: Eq + Debug,
+        OML: OrderedMapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a,
+    {
+        let map_diff = MapComparison::from_map_like(
+            self.actual(),
+            expected.borrow(),
+            Some(SequenceOrderComparison::Strict),
+        );
+        let (values_assertion_result, values_different) =
+            feed_different_values_facts(self.new_result(), &map_diff, false);
+        let key_order_comparison = map_diff.key_order_comparison.unwrap();
+        let (order_assertion_result, order_ok) = super::iterator::check_contains_exactly_in_order(
+            key_order_comparison,
+            self.actual().keys().into_iter(),
+            expected.borrow().keys().into_iter(),
+            values_assertion_result,
+        );
+
+        if order_ok && !values_different {
+            order_assertion_result.do_ok()
+        } else {
+            order_assertion_result.do_fail()
+        }
+    }
+
+    fn contains_all_of_in_order<BM, OML>(&self, expected: BM) -> R
+    where
+        K: Eq + Ord + Debug,
+        V: Eq + Debug,
+        OML: OrderedMapLike<K, V> + 'a,
+        BM: Borrow<OML> + 'a,
+    {
+        let map_diff = MapComparison::from_map_like(
+            self.actual(),
+            expected.borrow(),
+            Some(SequenceOrderComparison::Relative),
+        );
+        let (values_assertion_result, values_different) =
+            feed_different_values_facts(self.new_result(), &map_diff, false);
+        let key_order_comparison = map_diff.key_order_comparison.unwrap();
+        let (order_assertion_result, order_ok) = super::iterator::check_contains_all_of_in_order(
+            key_order_comparison,
+            self.actual().keys().into_iter(),
+            expected.borrow().keys().into_iter(),
+            values_assertion_result,
+        );
+
+        if order_ok && !values_different {
+            order_assertion_result.do_ok()
+        } else {
+            order_assertion_result.do_fail()
+        }
+    }
+}
+
 fn pluralize<'a>(count: usize, single: &'a str, plural: &'a str) -> &'a str {
     if count == 1 {
         single
@@ -346,7 +454,7 @@ fn pluralize<'a>(count: usize, single: &'a str, plural: &'a str) -> &'a str {
     }
 }
 
-fn feed_different_values_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
+fn feed_different_values_facts<K: Eq + Debug, V: Eq + Debug>(
     mut result: AssertionResult,
     diff: &MapComparison<&K, &V>,
     splitter: bool,
@@ -384,7 +492,7 @@ fn feed_different_values_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
     (result, has_diffs)
 }
 
-fn feed_missing_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
+fn feed_missing_entries_facts<K: Eq + Debug, V: Eq + Debug>(
     containment_spec: &str,
     mut result: AssertionResult,
     diff: &MapComparison<&K, &V>,
@@ -425,7 +533,7 @@ fn feed_missing_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
     (result, has_diffs)
 }
 
-fn feed_extra_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
+fn feed_extra_entries_facts<K: Eq + Debug, V: Eq + Debug>(
     mut result: AssertionResult,
     diff: &MapComparison<&K, &V>,
     splitter: bool,
@@ -437,7 +545,7 @@ fn feed_extra_entries_facts<K: Eq + Hash + Debug, V: Eq + Debug>(
         }
         result = result
             .add_fact(
-                format!("expected to not contain additional entries"),
+                "expected to not contain additional entries".to_string(),
                 format!(
                     "but {} additional {} found",
                     diff.extra.len(),
@@ -476,7 +584,7 @@ impl<'a, K: Debug, V: Debug> Debug for MapEntry<'a, K, V> {
     }
 }
 
-impl<K: Eq + Hash + Debug, V: PartialEq + Debug> Debug for MapValueDiff<&K, &V> {
+impl<K: Debug, V: PartialEq + Debug> Debug for MapValueDiff<&K, &V> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(
             format!(
@@ -857,5 +965,85 @@ mod tests {
             .contains_exactly(HashMap::from([("hello", "sorted_map"), ("world", "in")]));
         assert_that!(tree_map).does_not_contain_any(BTreeMap::from([("world", "nope")]));
         assert_that!(tree_map).does_not_contain_any(HashMap::from([("world", "nope")]));
+    }
+
+    #[test]
+    fn contains_exactly_in_order() {
+        let tree_map = BTreeMap::from([("hello", "sorted_map"), ("world", "in")]);
+        assert_that!(tree_map)
+            .contains_exactly_in_order(BTreeMap::from([("hello", "sorted_map"), ("world", "in")]));
+
+        // Wrong value
+        let result = check_that!(tree_map)
+            .contains_exactly_in_order(BTreeMap::from([("hello", "wrong"), ("world", "in")]));
+        assert_that!(result).facts_are_at_least(vec![
+            Fact::new(
+                "expected to contain the same entries",
+                "but found 1 entry that is different",
+            ),
+            Fact::new_splitter(),
+            Fact::new_multi_value_fact(
+                r#"key was mapped to unexpected value"#,
+                vec![r#"{ key: "hello", expected: "sorted_map", actual: "wrong" }"#],
+            ),
+        ]);
+
+        // Extra key
+        let result = check_that!(tree_map)
+            .contains_exactly_in_order(BTreeMap::from([("hello", "sorted_map"), ("was", "at")]));
+        assert_that!(result).facts_are(vec![
+            Fact::new("missing (1)", r#"["was"]"#),
+            Fact::new("unexpected (1)", r#"["world"]"#),
+            Fact::new_splitter(),
+            Fact::new_multi_value_fact("expected", vec![r#""hello""#, r#""was""#]),
+            Fact::new_multi_value_fact("actual", vec![r#""hello""#, r#""world""#]),
+        ]);
+
+        // Extra key and wrong value
+        let result = check_that!(tree_map)
+            .contains_exactly_in_order(BTreeMap::from([("hello", "wrong"), ("was", "at")]));
+        assert_that!(result).facts_are(vec![
+            Fact::new(
+                "expected to contain the same entries",
+                "but found 1 entry that is different",
+            ),
+            Fact::new_splitter(),
+            Fact::new_multi_value_fact(
+                r#"key was mapped to unexpected value"#,
+                vec![r#"{ key: "hello", expected: "sorted_map", actual: "wrong" }"#],
+            ),
+            Fact::new("missing (1)", r#"["was"]"#),
+            Fact::new("unexpected (1)", r#"["world"]"#),
+            Fact::new_splitter(),
+            Fact::new_multi_value_fact("expected", vec![r#""hello""#, r#""was""#]),
+            Fact::new_multi_value_fact("actual", vec![r#""hello""#, r#""world""#]),
+        ]);
+    }
+
+    #[test]
+    fn contains_all_of_in_order() {
+        let tree_map = BTreeMap::from([("hello", "sorted_map"), ("lang", "en"), ("world", "in")]);
+        assert_that!(tree_map)
+            .contains_all_of_in_order(BTreeMap::from([("hello", "sorted_map"), ("world", "in")]));
+
+        // Extra key and wrong value
+        let result = check_that!(tree_map)
+            .contains_exactly_in_order(BTreeMap::from([("hello", "wrong"), ("ww", "w")]));
+        assert_that!(result).facts_are(vec![
+            Fact::new(
+                "expected to contain the same entries",
+                "but found 1 entry that is different",
+            ),
+            Fact::new_splitter(),
+            Fact::new_multi_value_fact(
+                r#"key was mapped to unexpected value"#,
+                vec![r#"{ key: "hello", expected: "sorted_map", actual: "wrong" }"#],
+            ),
+            Fact::new("missing (1)", r#"["ww"]"#),
+            Fact::new("unexpected (2)", r#"["lang", "world"]"#),
+            Fact::new_splitter(),
+            Fact::new_multi_value_fact("expected", vec![r#""hello""#, r#""ww""#]),
+            Fact::new_multi_value_fact("actual", vec![r#""hello""#, r#""lang""#, r#""world""#]),
+        ]);
     }
 }
