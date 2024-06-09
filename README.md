@@ -53,6 +53,31 @@ fn test_it() {
 }
 ```
 
+## anyhow
+
+Supports asserting error value of `anyhow` under `anyhow` feature flag.
+
+```toml
+[dependencies]
+assertor = { version = "*", features = ["anyhow"] }
+```
+
+```rust
+use assertor::*;
+use anyhow::anyhow;
+
+fn anyhow_func() -> anyhow::Result<()> {
+    Err(anyhow!("failed to parse something in foobar"))
+}
+
+fn test_it() {
+    assert_that!(anyhow_func()).err().has_message("failed to parse something in foobar");
+    assert_that!(anyhow_func()).err().as_string().contains("parse something");
+    assert_that!(anyhow_func()).err().as_string().starts_with("failed");
+    assert_that!(anyhow_func()).err().as_string().ends_with("foobar");
+}
+```
+
 ## Feature ideas
 
 - [ ] Color / Bold

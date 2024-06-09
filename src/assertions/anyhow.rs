@@ -17,14 +17,42 @@ use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 use crate::StringAssertion;
 
 /// Trait for anyhow error assertion.
+///
+/// # Example
+///
+/// ```rust
+/// use assertor::*;
+/// use anyhow::anyhow;
+///
+/// fn anyhow_func() -> anyhow::Result<()> {
+///     Err(anyhow!("failed to parse something in foobar"))
+/// }
+///
+/// fn test_it() {
+///     assert_that!(anyhow_func()).err().has_message("failed to parse something in foobar");
+///     assert_that!(anyhow_func()).err().as_string().contains("parse something");
+///     assert_that!(anyhow_func()).err().as_string().starts_with("failed");
+///     assert_that!(anyhow_func()).err().as_string().ends_with("foobar");
+/// }
+/// ```
 pub trait AnyhowErrorAssertion<R> {
     /// Returns a new `String` subject which is the message of the error.
+    ///
+    /// Related: [`StringAssertion`](crate::StringAssertion)
+    ///
     /// ```
     /// use assertor::*;
     /// use anyhow::anyhow;
     ///
+    /// assert_that!(anyhow!("error message")).as_string().is_same_string_to("error message");
     /// assert_that!(anyhow!("error message")).as_string().contains("error");
-    /// assert_that!(anyhow!("error message")).as_string().starts_with("error");
+    ///
+    ///
+    /// fn some_func() -> anyhow::Result<()> {
+    ///    Err(anyhow!("error message"))
+    /// }
+    /// assert_that!(some_func()).err().as_string().starts_with("error");
+    /// assert_that!(some_func()).err().as_string().ends_with("message");
     /// ```
     fn as_string(&self) -> Subject<String, (), R>;
 
