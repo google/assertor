@@ -47,6 +47,8 @@
 #[cfg(feature = "float")]
 extern crate num_traits;
 
+#[cfg(feature = "anyhow")]
+pub use assertions::anyhow::AnyhowErrorAssertion;
 pub use assertions::basic::{ComparableAssertion, EqualityAssertion};
 pub use assertions::boolean::BooleanAssertion;
 #[cfg(feature = "float")]

@@ -15,6 +15,7 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
+use crate::assert_that;
 use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 
 /// Trait for result assertion.
@@ -40,18 +41,24 @@ pub trait ResultAssertion<R, OK, ERR> {
 
     /// Checks that the subject is [`Result::Ok(expected)`](`std::result::Result::Err`).
     fn has_ok<B: Borrow<OK>>(&self, expected: B) -> R
-    where
-        OK: PartialEq;
+        where
+            OK: PartialEq;
 
     /// Checks that the subject is [`Result::Err(expected)`](`std::result::Result::Err`).
     fn has_err<B: Borrow<ERR>>(&self, expected: B) -> R
-    where
-        ERR: PartialEq;
+        where
+            ERR: PartialEq;
+
+    /// Returns a new subject which is the ok value of the subject if the subject has ok value. Otherwise, it fails.
+    fn ok(&self) -> Subject<OK, (), R>;
+
+    /// Returns a new subject which is the error value of the subject if the subject has error value. Otherwise, it fails. 
+    fn err(&self) -> Subject<ERR, (), R>;
 }
 
 impl<R, OK: Debug, ERR: Debug> ResultAssertion<R, OK, ERR> for Subject<'_, Result<OK, ERR>, (), R>
-where
-    AssertionResult: AssertionStrategy<R>,
+    where
+        AssertionResult: AssertionStrategy<R>,
 {
     fn is_ok(&self) -> R {
         if self.actual().is_ok() {
@@ -80,8 +87,8 @@ where
     }
 
     fn has_ok<B: Borrow<OK>>(&self, expected: B) -> R
-    where
-        OK: PartialEq,
+        where
+            OK: PartialEq,
     {
         match self.actual() {
             Ok(actual) if actual.eq(expected.borrow()) => self.new_result().do_ok(),
@@ -99,8 +106,8 @@ where
     }
 
     fn has_err<B: Borrow<ERR>>(&self, expected: B) -> R
-    where
-        ERR: PartialEq,
+        where
+            ERR: PartialEq,
     {
         match self.actual() {
             Err(actual) if actual.eq(expected.borrow()) => self.new_result().do_ok(),
@@ -116,10 +123,21 @@ where
                 .do_fail(),
         }
     }
+
+    fn ok(&self) -> Subject<OK, (), R> {
+        assert_that!(*self.actual()).is_ok();
+        self.new_subject(self.actual().as_ref().ok().unwrap(), Some(format!("{}.ok", self.description_or_expr())), ())
+    }
+
+    fn err(&self) -> Subject<ERR, (), R> {
+        assert_that!(*self.actual()).is_err();
+        self.new_subject(self.actual().as_ref().err().unwrap(), Some(format!("{}.err", self.description_or_expr())), ())
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::ComparableAssertion;
     use crate::testing::*;
 
     use super::*;
@@ -188,5 +206,27 @@ mod tests {
                 Fact::new("actual", r#"Err("")"#),
             ],
         );
+    }
+
+    #[test]
+    fn ok() {
+        assert_that!(Result::<f64,()>::Ok(0.)).ok().is_at_most(1.);
+    }
+
+    #[test]
+    #[should_panic]
+    fn ok_panic() {
+        assert_that!(Result::<f64,()>::Err(())).ok().is_at_most(1.);
+    }
+
+    #[test]
+    fn err() {
+        assert_that!(Result::<(), f64>::Err(0.)).err().is_at_most(1.);
+    }
+
+    #[test]
+    #[should_panic]
+    fn err_panic() {
+        assert_that!(Result::<(), f64>::Ok(())).err().is_at_most(1.);
     }
 }
