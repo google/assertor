@@ -15,12 +15,13 @@ categories = ["development-tools::testing", "development-tools::debugging"]
 
 [dependencies]
 num-traits = { version = "0.2.15", optional = true }
+anyhow = { version = "1.0.86", optional = true }
 
 [dev-dependencies]
 test-case = "3.1.0"
 
 [features]
 default = ["float"]
-float = ["num-traits"]
+float = ["dep:num-traits"]
 testing = []
-
+anyhow = ["dep:anyhow"]
