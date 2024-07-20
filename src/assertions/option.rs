@@ -15,8 +15,8 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
 
-use crate::base::AssertionApi;
 use crate::{AssertionResult, AssertionStrategy, Subject};
+use crate::base::AssertionApi;
 
 /// Trait for option assertion.
 ///
@@ -27,8 +27,9 @@ use crate::{AssertionResult, AssertionStrategy, Subject};
 /// assert_that!(Option::Some(1)).has_value(1);
 /// assert_that!(Option::Some(1)).is_some();
 /// assert_that!(Option::<usize>::None).is_none();
+/// assert_that!(Option::Some("foobar")).some().starts_with("foo");
 /// ```
-pub trait OptionAssertion<'a, T, R>
+pub trait OptionAssertion<T, R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
@@ -47,9 +48,23 @@ where
     where
         B: Borrow<T>,
         T: PartialEq + Debug;
+
+    /// Returns a new subject which is the value of the subject if the subject is [`Option::Some(_)`](`Option::Some`). Otherwise, it fails.
+    ///
+    /// # Example
+    /// ```
+    /// use assertor::*;
+    ///
+    /// let value = Option::Some("foobar");
+    /// assert_that!(value).some().starts_with("foo");
+    /// assert_that!(value).some().ends_with("bar");
+    /// ```
+    fn some(&self) -> Subject<T, (), R>
+    where
+        T: PartialEq + Debug;
 }
 
-impl<'a, T, R> OptionAssertion<'a, T, R> for Subject<'a, Option<T>, (), R>
+impl<T, R> OptionAssertion<T, R> for Subject<'_, Option<T>, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
@@ -99,6 +114,14 @@ where
                 .add_fact("actual", "None")
                 .do_fail(),
         }
+    }
+
+    fn some(&self) -> Subject<T, (), R>
+    where
+        T: PartialEq + Debug,
+    {
+        let value = self.actual().as_ref().expect("Expected Some(_) but was None");
+        self.new_subject(value, None, ())
     }
 }
 
