@@ -525,8 +525,8 @@ impl Fact {
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::CheckThatResult;
     use crate::*;
+    use crate::testing::CheckThatResult;
 
     use super::*;
 
@@ -661,7 +661,9 @@ kv_key: [ "1", "2", "3" ]"#
         );
         #[derive(Debug)]
         struct LongOutputData<'a> {
+            #[allow(dead_code)]
             val: Option<i32>,
+            #[allow(dead_code)]
             nested: Vec<&'a str>,
         }
         assert_eq!(
