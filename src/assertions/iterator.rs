@@ -639,12 +639,6 @@ mod tests {
 
     use super::*;
 
-    #[derive(Debug, PartialEq)]
-    struct LongDebugObject {
-        nested: Vec<i32>,
-        plain: String,
-    }
-
     #[test]
     fn contains() {
         assert_that!(vec![1, 2, 3].iter()).contains(&3);
