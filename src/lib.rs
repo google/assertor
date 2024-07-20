@@ -52,6 +52,7 @@ extern crate num_traits;
 pub use assertions::anyhow::AnyhowErrorAssertion;
 pub use assertions::basic::{ComparableAssertion, EqualityAssertion};
 pub use assertions::boolean::BooleanAssertion;
+pub use assertions::cow::CowAssertion;
 #[cfg(feature = "float")]
 pub use assertions::float::FloatAssertion;
 pub use assertions::iterator::IteratorAssertion;
