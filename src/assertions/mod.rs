@@ -14,6 +14,7 @@
 
 pub mod basic;
 pub mod boolean;
+pub mod cow;
 pub mod iterator;
 pub mod map;
 pub mod option;
