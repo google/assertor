@@ -26,9 +26,11 @@ use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 /// ```
 pub trait EqualityAssertion<S, R> {
     /// Checks if the subject is equal to `expected`.
+    #[track_caller]
     fn is_equal_to<B: Borrow<S>>(&self, expected: B) -> R;
 
     /// Checks if the subject value is NOT equal to `expected`.
+    #[track_caller]
     fn is_not_equal_to<B: Borrow<S>>(&self, expected: B) -> R;
 }
 
@@ -58,15 +60,19 @@ where
 /// Trait for comparison assertions.
 pub trait ComparableAssertion<S, R> {
     /// Checks that the subject is greater than or equal to `expected`.
+    #[track_caller]
     fn is_at_least<B: Borrow<S>>(&self, expected: B) -> R;
 
     /// Checks that the subject is less than or equal to `expected`.
+    #[track_caller]
     fn is_at_most<B: Borrow<S>>(&self, expected: B) -> R;
 
     /// Checks that the subject is greater than `expected`.
+    #[track_caller]
     fn is_greater_than<B: Borrow<S>>(&self, expected: B) -> R;
 
     /// Checks that the subject is less than `expected`.
+    #[track_caller]
     fn is_less_than<B: Borrow<S>>(&self, expected: B) -> R;
 }
 

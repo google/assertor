@@ -34,25 +34,31 @@ use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 /// ```
 pub trait ResultAssertion<R, OK, ERR> {
     /// Checks that the subject is [`Result::Ok(_)`](`std::result::Result::Ok`).
+    #[track_caller]
     fn is_ok(&self) -> R;
 
     /// Checks that the subject is [`Result::Err(_)`](`std::result::Result::Err`).
+    #[track_caller]
     fn is_err(&self) -> R;
 
     /// Checks that the subject is [`Result::Ok(expected)`](`std::result::Result::Err`).
+    #[track_caller]
     fn has_ok<B: Borrow<OK>>(&self, expected: B) -> R
         where
             OK: PartialEq;
 
     /// Checks that the subject is [`Result::Err(expected)`](`std::result::Result::Err`).
+    #[track_caller]
     fn has_err<B: Borrow<ERR>>(&self, expected: B) -> R
         where
             ERR: PartialEq;
 
     /// Returns a new subject which is the ok value of the subject if the subject has ok value. Otherwise, it fails.
+    #[track_caller]
     fn ok(&self) -> Subject<OK, (), R>;
 
-    /// Returns a new subject which is the error value of the subject if the subject has error value. Otherwise, it fails. 
+    /// Returns a new subject which is the error value of the subject if the subject has error value. Otherwise, it fails.
+    #[track_caller]
     fn err(&self) -> Subject<ERR, (), R>;
 }
 

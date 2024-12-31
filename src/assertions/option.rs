@@ -34,16 +34,19 @@ where
     AssertionResult: AssertionStrategy<R>,
 {
     /// Checks the subject is [`Option::None`].
+    #[track_caller]
     fn is_none(&self) -> R
     where
         T: PartialEq + Debug;
 
     /// Checks the subject is [`Option::Some(_)`](`Option::Some`).
+    #[track_caller]
     fn is_some(&self) -> R
     where
         T: PartialEq + Debug;
 
     /// Checks the subject is [`Option::Some(expected)`](`Option::Some`).
+    #[track_caller]
     fn has_value<B>(&self, expected: B) -> R
     where
         B: Borrow<T>,
@@ -59,6 +62,7 @@ where
     /// assert_that!(value).some().starts_with("foo");
     /// assert_that!(value).some().ends_with("bar");
     /// ```
+    #[track_caller]
     fn some(&self) -> Subject<T, (), R>
     where
         T: PartialEq + Debug;

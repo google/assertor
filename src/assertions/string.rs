@@ -28,18 +28,23 @@ use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 /// ```
 pub trait StringAssertion<R> {
     /// Checks that the subject is same string to `expected`.
+    #[track_caller]
     fn is_same_string_to<E: Into<String>>(&self, expected: E) -> R;
 
     /// Checks that the subject contains `expected`.
+    #[track_caller]
     fn contains<E: Into<String>>(&self, expected: E) -> R;
 
     /// Checks that the subject does not contains `value`.
+    #[track_caller]
     fn does_not_contain<E: Into<String>>(&self, value: E) -> R;
 
     /// Checks that the subject starts with `expected`.
+    #[track_caller]
     fn starts_with<E: Into<String>>(&self, expected: E) -> R;
 
     /// Checks that the subject ends with `expected`.
+    #[track_caller]
     fn ends_with<E: Into<String>>(&self, expected: E) -> R;
 }
 
@@ -105,26 +110,31 @@ impl<R> StringAssertion<R> for Subject<'_, &str, (), R>
 where
     AssertionResult: AssertionStrategy<R>,
 {
+    #[track_caller]
     fn is_same_string_to<E: Into<String>>(&self, expected: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())
             .is_same_string_to(expected)
     }
 
+    #[track_caller]
     fn contains<E: Into<String>>(&self, expected: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())
             .contains(expected)
     }
 
+    #[track_caller]
     fn does_not_contain<E: Into<String>>(&self, value: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())
             .does_not_contain(value)
     }
 
+    #[track_caller]
     fn starts_with<E: Into<String>>(&self, expected: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())
             .starts_with(expected)
     }
 
+    #[track_caller]
     fn ends_with<E: Into<String>>(&self, expected: E) -> R {
         self.new_owned_subject(self.actual().to_string(), None, ())
             .ends_with(expected)

@@ -54,6 +54,7 @@ where
     /// use assertor::*;
     /// assert_that!(vec![1, 2, 3]).contains(2);
     /// ```
+    #[track_caller]
     fn contains<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -66,6 +67,7 @@ where
     /// use assertor::*;
     /// assert_that!(vec![1, 2, 3]).does_not_contain(5);
     /// ```
+    #[track_caller]
     fn does_not_contain<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -87,6 +89,7 @@ where
     /// assert_that!(vec![1]).contains_exactly(vec![1,2]);
     /// assert_that!(vec![1,2]).contains_exactly(vec![1]);
     /// ```
+    #[track_caller]
     fn contains_exactly<B: Borrow<Vec<T>>>(self, expected_vec: B) -> R
     where
         T: PartialEq + Debug;
@@ -103,6 +106,7 @@ where
     /// assert_that!(vec![1]).contains_exactly_in_order(vec![1,2]);
     /// assert_that!(vec![1,2]).contains_exactly_in_order(vec![1]);
     /// ```
+    #[track_caller]
     fn contains_exactly_in_order<B: Borrow<Vec<T>>>(self, expected_vec: B) -> R
     where
         T: PartialEq + Debug;
@@ -118,6 +122,7 @@ where
     /// use assertor::*;
     /// assert_that!(vec![1,2]).does_not_contain_any(vec![1]);
     /// ```
+    #[track_caller]
     fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
     where
         T: PartialEq + Debug;
@@ -129,6 +134,7 @@ where
     /// use assertor::*;
     /// assert_that!(Vec::<usize>::new()).is_empty();
     /// ```
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         T: Debug;
@@ -140,6 +146,7 @@ where
     /// use assertor::*;
     /// assert_that!(vec![1]).is_not_empty();
     /// ```
+    #[track_caller]
     fn is_not_empty(&self) -> R
     where
         T: Debug;
@@ -151,6 +158,7 @@ where
     /// use assertor::*;
     /// assert_that!(vec![1, 2, 3]).has_length(3);
     /// ```
+    #[track_caller]
     fn has_length(&self, length: usize) -> R;
 }
 

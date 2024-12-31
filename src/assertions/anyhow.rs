@@ -68,6 +68,7 @@ pub trait AnyhowErrorAssertion<R> {
     /// }
     /// assert_that!(some_func()).err().has_message("error message")
     /// ```
+    #[track_caller]
     fn has_message<E: Into<String>>(&self, expected: E) -> R;
 }
 

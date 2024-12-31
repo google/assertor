@@ -25,9 +25,11 @@ use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 /// ```
 pub trait BooleanAssertion<R> {
     /// Checks that the subject is equal to `true`.
+    #[track_caller]
     fn is_true(&self) -> R;
 
     /// Checks that the subject is equal to `false`.
+    #[track_caller]
     fn is_false(&self) -> R;
 }
 

@@ -45,6 +45,7 @@ pub trait FloatAssertion<'a, S, R> {
     /// abs(actual - expected) <= (asb_tol + rel_tol * abs(expected))
     /// ```
     /// See also: [numpy.isclose](https://numpy.org/doc/stable/reference/generated/numpy.isclose.html)
+    #[track_caller]
     fn is_approx_equal_to<B: Borrow<S>>(&self, expected: B) -> R
     where
         FloatTolerance<S>: Default;
