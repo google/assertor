@@ -51,25 +51,30 @@ use crate::EqualityAssertion;
 /// ```
 pub trait SetAssertion<'a, S, T, R> {
     /// Checks that the subject has the given length.
+    #[track_caller]
     fn has_length(&self, length: usize) -> R;
 
     /// Checks that the subject is empty.
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         T: Debug;
 
     /// Checks that the subject has `expected`.
+    #[track_caller]
     fn contains<B: Borrow<T>>(&self, expected: B) -> R
     where
         T: PartialEq + Eq + Debug + Hash;
 
     /// Checks that the subject does not contain `element`.
+    #[track_caller]
     fn does_not_contain<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
         T: PartialEq + Debug;
 
     /// Checks that the subject does not contain any element of `elements`.
+    #[track_caller]
     fn does_not_contain_any<B: Borrow<Vec<T>>>(&self, elements: B) -> R
     where
         T: PartialEq + Debug;

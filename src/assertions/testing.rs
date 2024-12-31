@@ -34,15 +34,19 @@ use crate::testing::CheckThatResult;
 /// ```
 pub trait CheckThatResultAssertion<'a, R> {
     /// Checks that the assertion result contains elements of `facts` in order.
+    #[track_caller]
     fn facts_are<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R;
 
     /// Checks that the assertion result contains elements of `facts` in order.
+    #[track_caller]
     fn facts_are_at_least<B: Borrow<Vec<Fact>>>(&self, facts: B) -> R;
 
     /// Returns the first fact value whose key is equal to `key`.
+    #[track_caller]
     fn fact_value_for_key<I: Into<String>>(&self, key: I) -> Subject<String, (), R>;
 
     /// Returns keys of the assertion messages.
+    #[track_caller]
     fn fact_keys(&self) -> Subject<'a, HashSet<&String>, (), R>;
 }
 

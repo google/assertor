@@ -67,6 +67,7 @@ where
     /// ## Related:
     /// - [`crate::StringAssertion::contains`]
     /// - [`crate::VecAssertion::contains`]
+    #[track_caller]
     fn contains<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -91,6 +92,7 @@ where
     /// ## Related:
     /// - [`crate::StringAssertion::does_not_contain`]
     /// - [`crate::VecAssertion::does_not_contain`]
+    #[track_caller]
     fn does_not_contain<B>(&self, element: B) -> R
     where
         B: Borrow<T>,
@@ -116,6 +118,7 @@ where
     /// // expected      : ['b', 'a', 'z', 'b', 'a', 'r']
     /// // actual        : ['f', 'o', 'o', 'b', 'a', 'r', 'b', 'a', 'z']
     /// ```
+    #[track_caller]
     fn contains_exactly<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug;
@@ -144,6 +147,7 @@ where
     /// // expected: ['b', 'a', 'z', 'b', 'a', 'r', 'f', 'o', 'o']
     /// // actual  : ['f', 'o', 'o', 'b', 'a', 'r', 'b', 'a', 'z']
     /// ```
+    #[track_caller]
     fn contains_exactly_in_order<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug;
@@ -160,6 +164,7 @@ where
     /// assert_that!(vec![1, 2, 3].iter()).contains_all_of(vec![2, 3].iter());
     /// assert_that!("foobarbaz".chars()).contains_all_of("bazbar".chars());
     /// ```
+    #[track_caller]
     fn contains_all_of<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug;
@@ -180,6 +185,7 @@ where
     /// // expected to contain none of : ['a', 'b']
     /// // but was                     : ['f', 'o', 'o', 'b', 'a', 'r', 'b', 'a', 'z']
     /// ```
+    #[track_caller]
     fn does_not_contain_any<EI: Iterator<Item = T> + Clone>(&self, elements: EI) -> R
     where
         T: PartialEq + Debug;
@@ -192,6 +198,7 @@ where
     /// assert_that!(vec![1, 2, 3].iter()).contains_all_of_in_order(vec![2, 3].iter());
     /// assert_that!("foobarbaz".chars()).contains_all_of_in_order("obarb".chars());
     /// ```
+    #[track_caller]
     fn contains_all_of_in_order<EI: Iterator<Item = T> + Clone>(self, expected_iter: EI) -> R
     where
         T: PartialEq + Debug;
@@ -211,6 +218,7 @@ where
     /// // ---
     /// // actual: [1]
     /// ```
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         T: Debug;
@@ -230,6 +238,7 @@ where
     /// // ---
     /// // actual: []
     /// ```
+    #[track_caller]
     fn is_not_empty(&self) -> R
     where
         T: Debug;
@@ -249,6 +258,7 @@ where
     /// // expected: 2
     /// // actual  : 3
     /// ```
+    #[track_caller]
     fn has_length(&self, length: usize) -> R
     where
         T: Debug;

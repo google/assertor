@@ -30,9 +30,11 @@ use crate::base::{AssertionApi, AssertionResult, AssertionStrategy, Subject};
 pub trait CowAssertion<T: ?Sized, Y, R>
 {
     /// Checks that the subject is [`Cow::Borrowed(_)`](`std::borrow::Cow::Borrowed`).
+    #[track_caller]
     fn is_borrowed(&self) -> R;
 
     /// Checks that the subject is [`Cow::Owned(_)`](`std::borrow::Cow::Owned`).
+    #[track_caller]
     fn is_owned(&self) -> R;
 
     /// Returns a new subject which is the dereferenced value of the subject.

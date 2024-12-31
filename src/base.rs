@@ -269,9 +269,11 @@ impl<'a, Sub, Opt, Ret> AssertionApi<'a, Sub, Opt, Ret> for Subject<'a, Sub, Opt
 /// Those assertion behavior is switched by [`Subject.return_type`] and [`AssertionStrategy`].
 pub trait AssertionStrategy<R> {
     /// Behavior when assertion fails.
+    #[track_caller]
     fn do_fail(self) -> R;
 
     /// Behavior when assertion passes.
+    #[track_caller]
     fn do_ok(self) -> R;
 }
 

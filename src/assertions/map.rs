@@ -48,31 +48,37 @@ where
     ML: MapLike<K, V>,
 {
     /// Checks that the subject has the given length.
+    #[track_caller]
     fn has_length(&self, length: usize) -> R;
 
     /// Checks that the subject is empty.
+    #[track_caller]
     fn is_empty(&self) -> R
     where
         K: Debug;
 
     /// Checks that the subject is not empty.
+    #[track_caller]
     fn is_not_empty(&self) -> R
     where
         K: Debug;
 
     /// Checks that the subject has the given `key`.
+    #[track_caller]
     fn contains_key<BK>(&self, key: BK) -> R
     where
         BK: Borrow<K>,
         K: Eq + Hash + Debug;
 
     /// Checks that the subject does not have the given `key`.
+    #[track_caller]
     fn does_not_contain_key<BK>(&self, key: BK) -> R
     where
         BK: Borrow<K>,
         K: Eq + Hash + Debug;
 
     /// Checks that the subject has entry with the given `key` and `value`.
+    #[track_caller]
     fn contains_entry<BK, BV>(&self, key: BK, value: BV) -> R
     where
         BK: Borrow<K>,
@@ -81,6 +87,7 @@ where
         V: Eq + Debug;
 
     /// Checks that the subject does not contain entry with the given `key` and `value`.
+    #[track_caller]
     fn does_not_contain_entry<BK, BV>(&self, key: BK, value: BV) -> R
     where
         BK: Borrow<K>,
@@ -89,6 +96,7 @@ where
         V: Eq + Debug;
 
     /// Checks that the subject contains all entries from `expected`.
+    #[track_caller]
     fn contains_at_least<BM: 'a, OML: 'a>(&self, expected: BM) -> R
     where
         K: Eq + Hash + Debug,
@@ -97,6 +105,7 @@ where
         BM: Borrow<OML> + 'a;
 
     /// Checks that the subject does not contain any entries from `expected`.
+    #[track_caller]
     fn does_not_contain_any<BM: 'a, OML: 'a>(&self, expected: BM) -> R
     where
         K: Eq + Hash + Debug,
@@ -105,6 +114,7 @@ where
         BM: Borrow<OML> + 'a;
 
     /// Checks that the subject contains only entries from `expected`.
+    #[track_caller]
     fn contains_exactly<BM, OML>(&self, expected: BM) -> R
     where
         K: Eq + Hash + Debug,
@@ -129,6 +139,7 @@ where
     /// assert_that!(map).key_set().contains(&"one");
     /// assert_that!(map).key_set().contains_exactly(vec!["three","two","one"].iter());
     /// assert_that!(map).key_set().contains_all_of(vec!["one", "two"].iter());
+    /// ```
     fn key_set<'b>(&'b self) -> Subject<ML::It<'b>, (), R>
     where
         K: 'b;
@@ -160,6 +171,7 @@ where
     ML: OrderedMapLike<K, V>,
 {
     /// Checks that the subject exactly contains `expected` in the same order.
+    #[track_caller]
     fn contains_exactly_in_order<BM, OML>(&self, expected: BM) -> R
     where
         K: Eq + Ord + Debug,
@@ -168,6 +180,7 @@ where
         BM: Borrow<OML> + 'a;
 
     /// Checks that the subject contains at least all elements of `expected` in the same order.
+    #[track_caller]
     fn contains_all_of_in_order<BM, OML>(&self, expected: BM) -> R
     where
         K: Eq + Ord + Debug,
