@@ -84,8 +84,10 @@ where
         if self.actual().ge(expected.borrow()) {
             self.new_result().do_ok()
         } else {
-            // TODO: write error message
-            self.new_result().do_fail()
+            self.new_result()
+                .add_fact("expected", format!("{:?}", self.actual()))
+                .add_fact("to be at least", format!("{:?}", expected.borrow()))
+                .do_fail()
         }
     }
 
@@ -93,8 +95,10 @@ where
         if self.actual().le(expected.borrow()) {
             self.new_result().do_ok()
         } else {
-            // TODO: write error message
-            self.new_result().do_fail()
+            self.new_result()
+                .add_fact("expected", format!("{:?}", self.actual()))
+                .add_fact("to be at most", format!("{:?}", expected.borrow()))
+                .do_fail()
         }
     }
 
@@ -102,8 +106,10 @@ where
         if self.actual().gt(expected.borrow()) {
             self.new_result().do_ok()
         } else {
-            // TODO: write error message
-            self.new_result().do_fail()
+            self.new_result()
+                .add_fact("expected", format!("{:?}", self.actual()))
+                .add_fact("to be greater than", format!("{:?}", expected.borrow()))
+                .do_fail()
         }
     }
 
@@ -111,8 +117,10 @@ where
         if self.actual().lt(expected.borrow()) {
             self.new_result().do_ok()
         } else {
-            // TODO: write error message
-            self.new_result().do_fail()
+            self.new_result()
+                .add_fact("expected", format!("{:?}", self.actual()))
+                .add_fact("to be less than", format!("{:?}", expected.borrow()))
+                .do_fail()
         }
     }
 }
@@ -152,5 +160,14 @@ mod tests {
         assert_that!(2).is_at_least(1);
         assert_that!(2).is_at_least(2);
         assert_that!(2_f32).is_at_least(1.);
+
+        assert_that!(check_that!(2).is_at_least(3)).facts_are(vec![
+            Fact::new("expected", "2"),
+            Fact::new("to be at least", "3"),
+        ]);
+        assert_that!(check_that!(2).is_at_most(1)).facts_are(vec![
+            Fact::new("expected", "2"),
+            Fact::new("to be at most", "1"),
+        ]);
     }
 }
