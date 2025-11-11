@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install ${{ matrix.toolchain }}
-        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b
+        uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy, rustfmt
@@ -47,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install ${{ matrix.toolchain }}
-        uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b
+        uses: dtolnay/rust-toolchain@0f44b27771c32bda9f458f75a1e241b09791b331
         with:
           toolchain: ${{ matrix.toolchain }}
       - name: cargo generate-lockfile
