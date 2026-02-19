@@ -27,7 +27,7 @@ jobs:
       matrix:
         toolchain: [ stable, nightly ]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install ${{ matrix.toolchain }}
         uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b
         with:
@@ -45,7 +45,7 @@ jobs:
       matrix:
         toolchain: [ stable, nightly ]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install ${{ matrix.toolchain }}
         uses: dtolnay/rust-toolchain@b3b07ba8b418998c39fb20f53e8b695cdcc8de1b
         with:
